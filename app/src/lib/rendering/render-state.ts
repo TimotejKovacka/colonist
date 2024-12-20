@@ -1,15 +1,15 @@
 import type { HexPoint } from "../coordinate-system/hex-point";
-import { Point2D } from "../coordinate-system/point";
+import { Point } from "../coordinate-system/point";
 import type { Coordinates, HexagonVerticeIndex } from "../types";
 
 export class RenderState {
   private _pan = {
     isPanning: false,
-    start: new Point2D(0, 0),
-    offset: new Point2D(0, 0),
+    start: new Point(0, 0),
+    offset: new Point(0, 0),
   };
   private _canvas: HTMLCanvasElement | null = null;
-  private _centerOffset: Point2D = new Point2D(0, 0);
+  private _centerOffset: Point = new Point(0, 0);
 
   selectedEdge: {
     row: number;
@@ -27,8 +27,8 @@ export class RenderState {
   resetPan() {
     this._pan = {
       isPanning: false,
-      start: new Point2D(0, 0),
-      offset: new Point2D(0, 0),
+      start: new Point(0, 0),
+      offset: new Point(0, 0),
     };
   }
 
@@ -37,7 +37,7 @@ export class RenderState {
   }
 
   set centerOffset(coordinates: Coordinates) {
-    this._centerOffset = Point2D.from(coordinates);
+    this._centerOffset = Point.from(coordinates);
   }
 
   get canvas(): HTMLCanvasElement {

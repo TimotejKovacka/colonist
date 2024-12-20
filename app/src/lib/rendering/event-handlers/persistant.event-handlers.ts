@@ -1,6 +1,6 @@
 import { PAN_LIMITS } from "@/lib/constants";
 import type { RenderState } from "../render-state";
-import { Point2D } from "@/lib/coordinate-system/point";
+import { Point } from "@/lib/coordinate-system/point";
 
 export class PersistentEventHandlers {
   constructor(
@@ -10,7 +10,7 @@ export class PersistentEventHandlers {
 
   handleMouseDown = (e: MouseEvent) => {
     this.renderState.pan.isPanning = true;
-    this.renderState.pan.start = new Point2D(e.clientX, e.clientY).minus(
+    this.renderState.pan.start = new Point(e.clientX, e.clientY).minus(
       this.renderState.pan.offset
     );
   };
@@ -21,7 +21,7 @@ export class PersistentEventHandlers {
 
   handlePanMove = (e: MouseEvent) => {
     if (!this.renderState.pan.isPanning) return;
-    const newOffset = new Point2D(e.clientX, e.clientY).minus(
+    const newOffset = new Point(e.clientX, e.clientY).minus(
       this.renderState.pan.start
     );
 
@@ -42,7 +42,7 @@ export class PersistentEventHandlers {
       e.preventDefault();
       const touch = e.touches[0];
       this.renderState.pan.isPanning = true;
-      this.renderState.pan.start = new Point2D(
+      this.renderState.pan.start = new Point(
         touch.clientX,
         touch.clientY
       ).minus(this.renderState.pan.offset);
@@ -54,7 +54,7 @@ export class PersistentEventHandlers {
       e.preventDefault();
       const touch = e.touches[0];
 
-      const newOffset = new Point2D(touch.clientX, touch.clientY).minus(
+      const newOffset = new Point(touch.clientX, touch.clientY).minus(
         this.renderState.pan.start
       );
 

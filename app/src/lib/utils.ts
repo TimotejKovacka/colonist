@@ -10,7 +10,7 @@ import type {
   HexHash,
 } from "./types";
 import { DIMENSIONS } from "./constants";
-import { Point2D } from "./coordinate-system/point";
+import { Point } from "./coordinate-system/point";
 import { HexPoint } from "./coordinate-system/hex-point";
 
 export function cn(...inputs: ClassValue[]) {
@@ -31,8 +31,8 @@ export function getVertexPosition(
 export function getBoardToCanvasCenterOffset(
   canvasWidth: number,
   canvasHeight: number
-): Point2D {
-  return new Point2D({
+): Point {
+  return new Point({
     x: (canvasWidth - DIMENSIONS.BOARD.WIDTH) / 2,
     y: (canvasHeight - DIMENSIONS.BOARD.HEIGHT) / 2,
   });
@@ -46,7 +46,7 @@ export function getGamePieceName(
 }
 
 export function getEdgePosition(vertice: VertexCoordinates): Coordinates {
-  return new Point2D(new HexPoint(vertice.hex)).add(
+  return new Point(new HexPoint(vertice.hex)).add(
     getEdgeDelta(vertice.vertexIndex)
   );
 }

@@ -1,6 +1,6 @@
 import type { Coordinates } from "../types";
 
-export class Point2D implements Coordinates {
+export class Point implements Coordinates {
   x: number;
   y: number;
 
@@ -12,74 +12,74 @@ export class Point2D implements Coordinates {
       this.x = x.x;
       this.y = x.y;
     } else {
-      throw new Error("Invalid arguments for Point2D constructor");
+      throw new Error("Invalid arguments for Point constructor");
     }
   }
 
-  static from(point: Coordinates): Point2D {
-    return new Point2D(point.x, point.y);
+  static from(point: Coordinates): Point {
+    return new Point(point.x, point.y);
   }
 
   static distance(point1: Coordinates, point2: Coordinates): number {
     return Math.sqrt((point1.x - point2.x) ** 2 + (point1.y - point2.y) ** 2);
   }
 
-  scale(ratio: number): Point2D;
-  scale(ratio: Coordinates): Point2D;
-  scale(ratio: number | Coordinates): Point2D {
+  scale(ratio: number): Point;
+  scale(ratio: Coordinates): Point;
+  scale(ratio: number | Coordinates): Point {
     if (typeof ratio === "number") {
-      return new Point2D(this.x * ratio, this.y * ratio);
+      return new Point(this.x * ratio, this.y * ratio);
     }
-    return new Point2D(this.x * ratio.x, this.y * ratio.y);
+    return new Point(this.x * ratio.x, this.y * ratio.y);
   }
 
-  xScale(ratio: number): Point2D {
-    return new Point2D(this.x * ratio);
+  xScale(ratio: number): Point {
+    return new Point(this.x * ratio);
   }
 
-  yScale(ratio: number): Point2D {
-    return new Point2D(this.x, this.y * ratio);
+  yScale(ratio: number): Point {
+    return new Point(this.x, this.y * ratio);
   }
 
-  add(other: number): Point2D;
-  add(other: Coordinates): Point2D;
-  add(other: number | Coordinates): Point2D {
+  add(other: number): Point;
+  add(other: Coordinates): Point;
+  add(other: number | Coordinates): Point {
     if (typeof other === "number") {
-      return new Point2D(this.x + other, this.y + other);
+      return new Point(this.x + other, this.y + other);
     }
-    return new Point2D(this.x + other.x, this.y + other.y);
+    return new Point(this.x + other.x, this.y + other.y);
   }
 
-  addX(other: number): Point2D {
-    return new Point2D(this.x + other, this.y);
+  addX(other: number): Point {
+    return new Point(this.x + other, this.y);
   }
 
-  addY(other: number): Point2D {
-    return new Point2D(this.x, this.y + other);
+  addY(other: number): Point {
+    return new Point(this.x, this.y + other);
   }
 
-  minus(other: number): Point2D;
-  minus(other: Coordinates): Point2D;
-  minus(other: number | Coordinates): Point2D {
+  minus(other: number): Point;
+  minus(other: Coordinates): Point;
+  minus(other: number | Coordinates): Point {
     if (typeof other === "number") {
-      return new Point2D(this.x - other, this.y - other);
+      return new Point(this.x - other, this.y - other);
     }
-    return new Point2D(this.x - other.x, this.y - other.y);
+    return new Point(this.x - other.x, this.y - other.y);
   }
 
-  minusX(other: number): Point2D {
-    return new Point2D(this.x - other, this.y);
+  minusX(other: number): Point {
+    return new Point(this.x - other, this.y);
   }
 
-  minusY(other: number): Point2D {
-    return new Point2D(this.x, this.y - other);
+  minusY(other: number): Point {
+    return new Point(this.x, this.y - other);
   }
 
-  clone(): Point2D {
-    return new Point2D(this.x, this.y);
+  clone(): Point {
+    return new Point(this.x, this.y);
   }
 
   toString(): string {
-    return `Point2D(${this.x}, ${this.y})`;
+    return `Point(${this.x}, ${this.y})`;
   }
 }

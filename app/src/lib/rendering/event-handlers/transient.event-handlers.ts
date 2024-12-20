@@ -8,7 +8,7 @@ import type { RenderState } from "../render-state";
 import type { GameState } from "@/lib/game-state";
 import type { Coordinates } from "@/lib/types";
 import { HexPoint } from "@/lib/coordinate-system/hex-point";
-import { Point2D } from "@/lib/coordinate-system/point";
+import { Point } from "@/lib/coordinate-system/point";
 
 export class TransientEventHandlers {
   private readonly hexPositions: Array<[number, number]>;
@@ -138,7 +138,7 @@ export class TransientEventHandlers {
         x: (vertexPos1.x + vertexPos2.x) / 2,
         y: (vertexPos1.y + vertexPos2.y) / 2,
       };
-      const distance = Point2D.distance(mousePos, edgeMidpoint);
+      const distance = Point.distance(mousePos, edgeMidpoint);
       if (distance < 20) {
         foundEdge = true;
         if (
@@ -167,7 +167,7 @@ export class TransientEventHandlers {
       const [row, col] = parseHexHash(hash);
       const hexPos = new HexPoint(row, col, offset);
       const vertexPos = getVertexPosition(hexPos, vertexI);
-      const distance = Point2D.distance(mousePos, vertexPos);
+      const distance = Point.distance(mousePos, vertexPos);
       if (distance < 20) {
         foundVertex = true;
         const vertex = this.renderState.selectedVertex;

@@ -1,6 +1,6 @@
 import { DIMENSIONS, SPRITES } from "../constants";
 import { HexPoint } from "../coordinate-system/hex-point";
-import { Point2D } from "../coordinate-system/point";
+import { Point } from "../coordinate-system/point";
 import type {
   Coordinates,
   VertexCoordinates,
@@ -73,7 +73,7 @@ export class DrawingService {
     for (const [hash, hexState] of Object.entries(board)) {
       const hexName = `hex_${hexState.resource}` as SpriteName;
       const [row, col] = parseHexHash(hash);
-      const pos = new Point2D(new HexPoint(row, col, offset)).scale(this.scale);
+      const pos = new Point(new HexPoint(row, col, offset)).scale(this.scale);
       this.drawSprite(hexName, pos);
     }
   }
@@ -185,7 +185,7 @@ export class DrawingService {
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
       const angle = (i * 60 + 30) * (Math.PI / 180);
-      const newPoint = new Point2D(start).add({
+      const newPoint = new Point(start).add({
         x: (DIMENSIONS.HEX.WIDTH / 1.75) * Math.cos(angle),
         y: (DIMENSIONS.HEX.HEIGHT / 2) * Math.sin(angle),
       });
@@ -213,14 +213,14 @@ export class DrawingService {
     offset: Coordinates = { x: 0, y: 0 }
   ): void {
     const spriteName = `road_${player}` as SpriteName;
-    const pos = new Point2D(getEdgePosition(edge)).add(offset);
+    const pos = new Point(getEdgePosition(edge)).add(offset);
     const rotation = getEdgeRotation(edge);
 
     this.drawSprite(spriteName, pos, rotation);
   }
 
   drawHexNumber(hexPos: Coordinates, hexNumber: DiceCombination) {
-    const pos = new Point2D(hexPos).addY(64);
+    const pos = new Point(hexPos).addY(64);
 
     this.drawSprite(hexNumber.toString() as SpriteName, pos);
   }
