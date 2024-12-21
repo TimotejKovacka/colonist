@@ -1,13 +1,15 @@
+import { StatefulHex } from "./state/stateful-hex";
 import type {
   DiceCombination,
   DiceToHexMap,
+  FiniteResourceType,
   GameBoard,
-  GameHexState,
   HexYield,
-  ResourceName,
+  PartialHexCoordinates,
   Sprite,
   SpriteName,
 } from "./types";
+import { hexesToVertices } from "./utils";
 
 export const DIMENSIONS = {
   HEX: {
@@ -24,7 +26,23 @@ export const DIMENSIONS = {
 export const HEX_HALF_WIDTH = DIMENSIONS.HEX.WIDTH / 1.75;
 export const HEX_HALF_HEIGHT = DIMENSIONS.HEX.HEIGHT / 2;
 
+const size = DIMENSIONS.HEX.HEIGHT / 2;
+const actualHalfWidth = (Math.sqrt(3) * size) / 2;
+export const HEX_CENTER_OFFSET = {
+  x: actualHalfWidth,
+  y: size,
+};
+
+export const VERTEX_X_UNIT = actualHalfWidth;
+export const VERTEX_Y_UNIT = size / 2;
+export const VERTEX_UNIT = {
+  x: VERTEX_X_UNIT,
+  y: VERTEX_Y_UNIT,
+};
 export const VERTEX_CLICK_RADIUS = 32 as const;
+
+export const EDGE_X_UNIT = actualHalfWidth / 2;
+export const EDGE_Y_UNIT = size * (3 / 4);
 
 export const SPRITE_DEFINITIONS: Record<SpriteName, Sprite> = {
   // Terrain hexes
@@ -68,25 +86,25 @@ export const SPRITES: Map<SpriteName, Sprite> = new Map(
 ) as Map<SpriteName, Sprite>;
 
 export const DEFAULT_BOARD: GameBoard = {
-  "0-1": getDefaultBoardHex("wood"),
-  "0-2": getDefaultBoardHex("brick"),
-  "0-3": getDefaultBoardHex("wheat"),
-  "1-1": getDefaultBoardHex("wheat"),
-  "1-2": getDefaultBoardHex("sheep"),
-  "1-3": getDefaultBoardHex("brick"),
-  "1-4": getDefaultBoardHex("stone"),
-  "2-0": getDefaultBoardHex("brick"),
-  "2-1": getDefaultBoardHex("wood"),
-  "2-2": getDefaultBoardHex("desert", true),
-  "2-3": getDefaultBoardHex("sheep"),
-  "2-4": getDefaultBoardHex("stone"),
-  "3-1": getDefaultBoardHex("wheat"),
-  "3-2": getDefaultBoardHex("wood"),
-  "3-3": getDefaultBoardHex("sheep"),
-  "3-4": getDefaultBoardHex("stone"),
-  "4-1": getDefaultBoardHex("wood"),
-  "4-2": getDefaultBoardHex("sheep"),
-  "4-3": getDefaultBoardHex("wheat"),
+  "0,1": getDefaultBoardHex({ q: 2, r: 0 }, "wood"),
+  "0,2": getDefaultBoardHex({ q: 3, r: 0 }, "brick"),
+  "0,3": getDefaultBoardHex({ q: 4, r: 0 }, "wheat"),
+  "1,1": getDefaultBoardHex({ q: 1, r: 1 }, "wheat"),
+  "1,2": getDefaultBoardHex({ q: 2, r: 1 }, "sheep"),
+  "1,3": getDefaultBoardHex({ q: 3, r: 1 }, "brick"),
+  "1,4": getDefaultBoardHex({ q: 4, r: 1 }, "stone"),
+  "2,0": getDefaultBoardHex({ q: 0, r: 2 }, "brick"),
+  "2,1": getDefaultBoardHex({ q: 1, r: 2 }, "wood"),
+  "2,2": getDefaultBoardHex({ q: 2, r: 2 }, "desert", true),
+  "2,3": getDefaultBoardHex({ q: 3, r: 2 }, "sheep"),
+  "2,4": getDefaultBoardHex({ q: 4, r: 2 }, "stone"),
+  "3,1": getDefaultBoardHex({ q: 0, r: 3 }, "wheat"),
+  "3,2": getDefaultBoardHex({ q: 1, r: 3 }, "wood"),
+  "3,3": getDefaultBoardHex({ q: 2, r: 3 }, "sheep"),
+  "3,4": getDefaultBoardHex({ q: 3, r: 3 }, "stone"),
+  "4,1": getDefaultBoardHex({ q: 0, r: 4 }, "wood"),
+  "4,2": getDefaultBoardHex({ q: 1, r: 4 }, "sheep"),
+  "4,3": getDefaultBoardHex({ q: 2, r: 4 }, "wheat"),
 } as const;
 
 export const DEFAULT_DICE_HEX_MAP: DiceToHexMap = {
@@ -117,20 +135,14 @@ export const DEFAULT_HEX_YIELD: HexYield = {
 
 // const values: DiceCombination[] = [2,3,3,4,4,4,5,5,5,5,6,6,6,6,6,7,7,7,7,7,7,8,8,8,8,8,9,9,9,9,10,10,10,11,11,12];
 function getDefaultBoardHex(
-  resource: ResourceName | "desert",
+  coords: PartialHexCoordinates,
+  resource: FiniteResourceType,
   robber = false
-): GameHexState {
-  return {
+): StatefulHex {
+  return new StatefulHex(
+    coords,
     resource,
-    diceVal: (Math.floor(Math.random() * (12 - 2 + 1)) + 2) as DiceCombination,
-    robber,
-    vertices: {
-      0: {},
-      1: {},
-      2: {},
-      3: {},
-      4: {},
-      5: {},
-    },
-  };
+    (Math.floor(Math.random() * (12 - 2 + 1)) + 2) as DiceCombination,
+    robber
+  );
 }

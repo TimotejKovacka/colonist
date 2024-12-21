@@ -1,6 +1,6 @@
 import type { HexPoint } from "../coordinate-system/hex-point";
 import { Point } from "../coordinate-system/point";
-import type { Coordinates, HexagonVerticeIndex } from "../types";
+import type { Coordinates, HexStateIndex } from "../types";
 
 export class RenderState {
   private _pan = {
@@ -14,7 +14,7 @@ export class RenderState {
   selectedEdge: {
     row: number;
     col: number;
-    vertex: HexagonVerticeIndex;
+    vertex: HexStateIndex;
   } | null = null;
   hoveredHex: HexPoint | null = null;
   selectedVertex: { row: number; col: number; vertex: number } | null = null;
@@ -37,7 +37,7 @@ export class RenderState {
   }
 
   set centerOffset(coordinates: Coordinates) {
-    this._centerOffset = Point.from(coordinates);
+    this._centerOffset = new Point(coordinates);
   }
 
   get canvas(): HTMLCanvasElement {

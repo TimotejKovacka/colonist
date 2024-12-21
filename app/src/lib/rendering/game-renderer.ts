@@ -7,6 +7,8 @@ import { RenderEventHandlers } from "./event-handlers";
 import { RenderState } from "./render-state";
 import type { Sprite, SpriteName } from "../types";
 import { getBoardToCanvasCenterOffset, getVertexPosition } from "../utils";
+import { Hex } from "../coordinate-system/hex";
+import { HEX_LAYOUT } from "../coordinate-system/hex-layout";
 
 const DEBUG = 1;
 
@@ -89,49 +91,17 @@ export class GameRenderer {
 
     this.drawingService.drawCanvasBackround();
 
-    this.drawingService.drawBoard(this.gameState.board, this.state.offset);
-    if (DEBUG) {
-      // this.drawingService.drawAvailableBuildingSpots(
-      //   this.gameState.playerAvailableVertices,
-      //   this.state.offset
-      // );
-      // this.debugService.drawVertices(this.state.offset);
-      this.debugService.drawGrid(this.state.offset);
-      this.debugService.drawEdges(
-        this.gameState.playerAvailableEdges,
-        this.state.offset
-      );
-    }
-    this.drawingService.drawGamePieces(this.gameState.board, this.state.offset);
+    const hex = new Hex(0, 0);
+    const pos = HEX_LAYOUT.hexToPixel(hex);
+    this.drawingService.drawDebugCircle(pos, 15);
+    this.drawingService.drawSprite(`hex_brick`, pos);
+    HEX_LAYOUT.polygonCorners(hex).forEach((v) =>
+      this.drawingService.drawDebugCircle(v, 10)
+    );
+    this.drawingService.drawBoard(this.gameState.board, { x: 0, y: 0 });
 
-    if (this.state.hoveredHex) {
-      this.drawingService.drawSprite("robber", this.state.hoveredHex);
-    }
-
-    if (this.state.selectedEdge) {
-      this.drawingService.drawRoad(
-        {
-          hex: this.state.selectedEdge,
-          vertexIndex: this.state.selectedEdge.vertex,
-        },
-        "red",
-        this.state.offset
-      );
-    }
-
-    if (this.state.selectedVertex && this.state.buildingType) {
-      const hexPos = new HexPoint(this.state.selectedVertex, this.state.offset);
-      const vertexPos = getVertexPosition(
-        hexPos,
-        this.state.selectedVertex.vertex
-      );
-      // Use a placeholder player color for preview
-      this.drawingService.drawPlayerGamePiece(
-        vertexPos,
-        this.state.buildingType,
-        "red"
-      );
-    }
+    // this.debugService.drawVertexGrid();
+    this.debugService.drawEdgeGrid();
   }
 
   centerBoard(): void {

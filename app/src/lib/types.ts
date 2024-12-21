@@ -1,9 +1,23 @@
+import { StatefulHex } from "./state/stateful-hex";
+
 export interface Coordinates {
   x: number;
   y: number;
 }
 
 export interface HexCoordinates {
+  q: number;
+  r: number;
+  s: number;
+}
+
+export interface PartialHexCoordinates {
+  q: number;
+  r: number;
+  s?: number;
+}
+
+export interface HexCoords {
   row: number;
   col: number;
 }
@@ -14,11 +28,11 @@ export interface HexCoordinates {
  * 2***0
  * **1**
  */
-export type HexagonVerticeIndex = 0 | 1 | 2 | 3 | 4 | 5;
+export type HexStateIndex = 0 | 1 | 2 | 3 | 4 | 5;
 
 export interface VertexCoordinates {
-  hex: HexCoordinates;
-  vertexIndex: HexagonVerticeIndex; // Starting from top, going clockwise
+  hex: HexCoords;
+  vertexIndex: HexStateIndex; // Starting from top, going clockwise
 }
 
 export interface PanState {
@@ -32,18 +46,21 @@ export interface Sprite extends Coordinates {
   height: number;
 }
 
-export type ResourceName = "wood" | "brick" | "stone" | "wheat" | "sheep";
+export type ResourceType = "wood" | "brick" | "stone" | "wheat" | "sheep";
+export type FiniteResourceType = ResourceType | "desert";
 
-export type HexName = `hex_${ResourceName}` | "hex_desert";
+export type HexSpriteName = `hex_${FiniteResourceType}`;
 
 export type PlayerColor = "red" | "blue";
 
-export type PlayerGamePiece = "road" | "settlement" | "city";
+export type Building = "settlement" | "city";
+
+export type PlayerGamePiece = "road" | Building;
 
 export type PlayerPieceName = `${PlayerGamePiece}_${PlayerColor}`;
 
 export type SpriteName =
-  | HexName
+  | HexSpriteName
   | PlayerPieceName
   | "robber"
   | "port"
@@ -78,19 +95,19 @@ export type GameVertexState = {
 };
 
 export type GameHexState = {
-  resource: ResourceName | "desert";
-  vertices: Record<HexagonVerticeIndex, GameVertexState>;
+  resource: FiniteResourceType;
+  vertices: Record<HexStateIndex, GameVertexState>;
   robber: boolean;
   diceVal: DiceCombination;
 };
 
-export type HexHash = `${number}-${number}`;
-export type GameBoard = Record<HexHash, GameHexState>;
+export type HexHash = `${number},${number}`;
+export type GameBoard = Record<HexHash, StatefulHex>;
 export type DiceToHexMap = Record<DiceCombination, HexHash[]>;
 
 export type HexStatePatch = {
   vertices: {
-    [vertexIndex in HexagonVerticeIndex]?: {
+    [vertexIndex in HexStateIndex]?: {
       [piece in PlayerGamePiece]?: PlayerColor | undefined;
     };
   };
@@ -98,6 +115,11 @@ export type HexStatePatch = {
 
 export type HexYield = Record<PlayerColor, number>;
 
-export type PlayerHand = Array<ResourceName>;
+export type PlayerHand = Array<ResourceType>;
 
 export type PlayerHandPatch = Record<PlayerColor, PlayerHand>;
+
+export type NullablePlayer = PlayerColor | null;
+export type BuildingState = [Building, PlayerColor] | null;
+
+export type IndexedHexState<T> = [T, T, T, T, T, T];

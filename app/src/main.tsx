@@ -4,7 +4,6 @@ import "./index.css";
 import App from "./App.tsx";
 import { GameFacade } from "./lib/game-facade.ts";
 import { DEFAULT_BOARD } from "./lib/constants.ts";
-import { HexagonVerticeIndex, HexHash } from "./lib/types.ts";
 
 const gameFacade = new GameFacade({ board: { ...DEFAULT_BOARD } });
 
@@ -12,7 +11,7 @@ window.devTools = {
   gameState: gameFacade.gameState,
   startTurn: () => gameFacade.turnService.startTurn(),
   endTurn: () => gameFacade.turnService.endTurn(),
-  // adjVertices: (h: HexHash, i: HexagonVerticeIndex) =>
+  // adjVertices: (h: HexHash, i: HexStateIndex) =>
   //   gameFacade.gameRenderer.availibilityService.getAdjacentVertices(h, i),
 };
 

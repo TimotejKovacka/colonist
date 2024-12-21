@@ -1,14 +1,14 @@
 import { DIMENSIONS } from "../constants";
-import type { Coordinates, HexCoordinates, HexHash } from "../types";
+import type { Coordinates, HexCoords, HexHash } from "../types";
 
-export class HexPoint implements Coordinates, HexCoordinates {
+export class HexPoint implements Coordinates, HexCoords {
   readonly row: number;
   readonly col: number;
   readonly x: number;
   readonly y: number;
 
   constructor(
-    val: number | HexCoordinates,
+    val: number | HexCoords,
     other?: number | Coordinates,
     offset?: Coordinates
   ) {

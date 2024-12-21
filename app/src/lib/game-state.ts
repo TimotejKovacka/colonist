@@ -5,7 +5,7 @@ import type {
   DiceCombination,
   DiceToHexMap,
   GameBoard,
-  HexagonVerticeIndex,
+  HexStateIndex,
   HexHash,
   HexStatePatch,
   PlayerColor,
@@ -21,7 +21,7 @@ import {
 
 export type PlayerBuildingEventHandler = (
   hexHash: HexHash,
-  vertex: HexagonVerticeIndex,
+  vertex: HexStateIndex,
   player: PlayerColor
 ) => void;
 
@@ -92,63 +92,63 @@ export class GameState {
     }
   }
 
-  updateBoardState(hexHash: HexHash, patch: "robber" | HexStatePatch): void {
-    const hex = this.board[hexHash];
-    if (!hex) {
-      throw new Error("Unknown game hex");
-    }
-    console.log("Board patch", patch);
+  // updateBoardState(hexHash: HexHash, patch: "robber" | HexStatePatch): void {
+  //   const hex = this.board[hexHash];
+  //   if (!hex) {
+  //     throw new Error("Unknown game hex");
+  //   }
+  //   console.log("Board patch", patch);
 
-    if (patch === "robber") {
-      hex.robber = true;
-      const playersAffected = [
-        ...new Set(
-          Object.values(hex.vertices).flatMap(
-            ({ city, settlement }) =>
-              [city, settlement].filter(Boolean) as PlayerColor[]
-          )
-        ),
-      ];
-      console.log("New state", this.board);
-      this.ee.emit("robberPlaced", hexHash, playersAffected);
-      return;
-    }
+  //   if (patch === "robber") {
+  //     hex.hasRobber = true;
+  //     const playersAffected = [
+  //       ...new Set(
+  //         Object.values(hex.vertices).flatMap(
+  //           ({ city, settlement }) =>
+  //             [city, settlement].filter(Boolean) as PlayerColor[]
+  //         )
+  //       ),
+  //     ];
+  //     console.log("New state", this.board);
+  //     this.ee.emit("robberPlaced", hexHash, playersAffected);
+  //     return;
+  //   }
 
-    if ("vertices" in patch) {
-      for (const [vertexIndex, updates] of Object.entries(patch.vertices)) {
-        const vertexToUpdate = getValidHexVerticeIndex(vertexIndex);
-        for (const [piece, player] of Object.entries(updates)) {
-          assertGamePiece(piece);
-          hex.vertices[vertexToUpdate][piece] = player;
-          console.log("New state", this.board);
-          switch (piece) {
-            case "road":
-              this.ee.emit("buildRoad", hexHash, vertexToUpdate, player);
-              this.availibilityService.handleBuildingPlayersRoad(
-                this.board,
-                hexHash,
-                vertexToUpdate
-              );
-              break;
-            case "settlement":
-              this.availibilityService.handleBuildingPlayersSettlement(
-                this.board,
-                hexHash,
-                vertexToUpdate
-              );
-              this.ee.emit("buildSettlement", hexHash, vertexToUpdate, player);
-              break;
-            case "city":
-              this.ee.emit("buildCity", hexHash, vertexToUpdate, player);
-              break;
-          }
-        }
-      }
-      return;
-    }
+  //   if ("vertices" in patch) {
+  //     for (const [vertexIndex, updates] of Object.entries(patch.vertices)) {
+  //       const vertexToUpdate = getValidHexVerticeIndex(vertexIndex);
+  //       for (const [piece, player] of Object.entries(updates)) {
+  //         assertGamePiece(piece);
+  //         hex.vertices[vertexToUpdate][piece] = player;
+  //         console.log("New state", this.board);
+  //         switch (piece) {
+  //           case "road":
+  //             this.ee.emit("buildRoad", hexHash, vertexToUpdate, player);
+  //             this.availibilityService.handleBuildingPlayersRoad(
+  //               this.board,
+  //               hexHash,
+  //               vertexToUpdate
+  //             );
+  //             break;
+  //           case "settlement":
+  //             this.availibilityService.handleBuildingPlayersSettlement(
+  //               this.board,
+  //               hexHash,
+  //               vertexToUpdate
+  //             );
+  //             this.ee.emit("buildSettlement", hexHash, vertexToUpdate, player);
+  //             break;
+  //           case "city":
+  //             this.ee.emit("buildCity", hexHash, vertexToUpdate, player);
+  //             break;
+  //         }
+  //       }
+  //     }
+  //     return;
+  //   }
 
-    throw new Error("Unknown board update");
-  }
+  //   throw new Error("Unknown board update");
+  // }
 
   updateTurnState(newState: "start" | "end") {
     console.log("Turn patch", newState);
@@ -167,9 +167,9 @@ export class GameState {
 function boardToDiceHexMap(board: GameBoard): DiceToHexMap {
   const map = { ...DEFAULT_DICE_HEX_MAP };
 
-  for (const [hash, { diceVal }] of Object.entries(board)) {
+  for (const [hash, { dice }] of Object.entries(board)) {
     assertHexHash(hash);
-    map[diceVal].push(hash);
+    map[dice].push(hash);
   }
 
   return map;

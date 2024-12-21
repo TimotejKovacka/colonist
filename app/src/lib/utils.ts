@@ -6,12 +6,17 @@ import type {
   PlayerColor,
   PlayerGamePiece,
   PlayerPieceName,
-  HexagonVerticeIndex,
+  HexStateIndex,
   HexHash,
+  FiniteResourceType,
+  HexSpriteName,
 } from "./types";
 import { DIMENSIONS } from "./constants";
 import { Point } from "./coordinate-system/point";
 import { HexPoint } from "./coordinate-system/hex-point";
+import { Hex } from "./coordinate-system/hex";
+import { Vertex } from "./coordinate-system/vertex";
+import { HEX_LAYOUT } from "./coordinate-system/hex-layout";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -51,7 +56,7 @@ export function getEdgePosition(vertice: VertexCoordinates): Coordinates {
   );
 }
 
-function getEdgeDelta(vertexIndex: HexagonVerticeIndex): Coordinates {
+function getEdgeDelta(vertexIndex: HexStateIndex): Coordinates {
   switch (vertexIndex) {
     case 0:
       return { x: DIMENSIONS.HEX.WIDTH / 4, y: DIMENSIONS.HEX.HEIGHT / 2 - 32 };
@@ -87,7 +92,7 @@ export function getEdgeRotation(vertice: VertexCoordinates): number {
   return 60 + vertice.vertexIndex * 60;
 }
 
-export function getValidHexVerticeIndex(index: string): HexagonVerticeIndex {
+export function getValidHexVerticeIndex(index: string): HexStateIndex {
   const val = Number(index);
   assertHexVerticeIndex(val);
 
@@ -95,15 +100,15 @@ export function getValidHexVerticeIndex(index: string): HexagonVerticeIndex {
 }
 
 export function toHexHash(row: number, col: number): HexHash {
-  return `${row}-${col}`;
+  return `${row},${col}`;
 }
 export function parseHexHash(s: string): [number, number] {
   assertHexHash(s);
-  return s.split("-").map(Number) as [number, number];
+  return s.split(",").map(Number) as [number, number];
 }
 
 export function assertHexHash(val: string): asserts val is HexHash {
-  const parsed = val.split("-");
+  const parsed = val.split(",");
   if (parsed.length !== 2) {
     throw new Error(`${val} is not a valid hex hash`);
   }
@@ -115,7 +120,7 @@ export function assertHexHash(val: string): asserts val is HexHash {
 
 export function assertHexVerticeIndex(
   index: number
-): asserts index is HexagonVerticeIndex {
+): asserts index is HexStateIndex {
   if (
     Number.isNaN(index) &&
     !Number.isInteger(index) &&
@@ -142,4 +147,43 @@ export function assertPlayerColor(s: string): asserts s is PlayerColor {
 
 export function isEven(n: number): boolean {
   return n % 2 === 0;
+}
+
+export function toHexSpriteName(
+  resourceType: FiniteResourceType
+): HexSpriteName {
+  return `hex_${resourceType}`;
+}
+
+export function hexToVertices(h: Hex): Vertex[] {
+  const offset = new Point({
+    x: h.q * 3 + (h.r % 2),
+    y: h.r * 4,
+  });
+
+  return [
+    new Vertex(offset.add({ x: 2, y: 1 })),
+    new Vertex(offset.add({ x: 1, y: 0 })),
+    new Vertex(offset.add({ x: 0, y: 1 })),
+    new Vertex(offset.add({ x: 0, y: 3 })),
+    new Vertex(offset.add({ x: 1, y: 4 })),
+    new Vertex(offset.add({ x: 1, y: 3 })),
+  ];
+}
+
+export function hexesToVertices(hexes: Hex[]): Vertex[] {
+  const vSet = new Set<HexHash>();
+  const vertices: Vertex[] = [];
+
+  for (const hex of hexes) {
+    const vertices = hexToVertices(hex);
+    vertices.forEach((v) => {
+      if (!vSet.has(v.hash)) {
+        vertices.push(v);
+        vSet.add(v.hash);
+      }
+    });
+  }
+
+  return vertices;
 }

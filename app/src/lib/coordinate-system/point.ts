@@ -1,8 +1,12 @@
-import type { Coordinates } from "../types";
+import type { Coordinates, HexHash } from "../types";
 
 export class Point implements Coordinates {
-  x: number;
-  y: number;
+  static distance(point1: Coordinates, point2: Coordinates): number {
+    return Math.sqrt((point1.x - point2.x) ** 2 + (point1.y - point2.y) ** 2);
+  }
+
+  public x: number;
+  public y: number;
 
   constructor(x: number | Coordinates, y?: number) {
     if (typeof x === "number" && y !== undefined) {
@@ -12,16 +16,12 @@ export class Point implements Coordinates {
       this.x = x.x;
       this.y = x.y;
     } else {
-      throw new Error("Invalid arguments for Point constructor");
+      throw InvalidPointConstructorError.createFromArgs(x, y);
     }
   }
 
-  static from(point: Coordinates): Point {
-    return new Point(point.x, point.y);
-  }
-
-  static distance(point1: Coordinates, point2: Coordinates): number {
-    return Math.sqrt((point1.x - point2.x) ** 2 + (point1.y - point2.y) ** 2);
+  get hash(): HexHash {
+    return `${this.x},${this.y}`;
   }
 
   scale(ratio: number): Point;
@@ -81,5 +81,35 @@ export class Point implements Coordinates {
 
   toString(): string {
     return `Point(${this.x}, ${this.y})`;
+  }
+}
+
+export class InvalidPointConstructorError extends Error {
+  constructor(
+    public providedArgs: {
+      firstArg: unknown;
+      secondArg: unknown;
+    },
+    message: string = `Invalid arguments for Point constructor. Expected (number, number) or Coordinates, got: (${
+      typeof providedArgs.firstArg === "object"
+        ? JSON.stringify(providedArgs.firstArg)
+        : providedArgs.firstArg
+    }, ${providedArgs.secondArg})`
+  ) {
+    super(message);
+    this.name = "InvalidPointConstructorError";
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, InvalidPointConstructorError);
+    }
+  }
+
+  static createFromArgs(
+    firstArg: unknown,
+    secondArg: unknown
+  ): InvalidPointConstructorError {
+    return new InvalidPointConstructorError({
+      firstArg,
+      secondArg,
+    });
   }
 }

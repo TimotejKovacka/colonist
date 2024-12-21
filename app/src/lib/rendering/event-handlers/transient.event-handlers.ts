@@ -9,6 +9,8 @@ import type { GameState } from "@/lib/game-state";
 import type { Coordinates } from "@/lib/types";
 import { HexPoint } from "@/lib/coordinate-system/hex-point";
 import { Point } from "@/lib/coordinate-system/point";
+import { Hex } from "@/lib/coordinate-system/hex";
+import { HEX_LAYOUT } from "@/lib/coordinate-system/hex-layout";
 
 export class TransientEventHandlers {
   private readonly hexPositions: Array<[number, number]>;
@@ -32,7 +34,35 @@ export class TransientEventHandlers {
       y: e.clientY - rect.top,
     };
 
-    this.checkVertexHover(mousePos, this.renderState.offset);
+    let foundVertex = false;
+    for (const [hash, index] of this.gameState.playerAvailableVertices) {
+      const [row, col] = parseHexHash(hash);
+      const vertexOffset = HEX_LAYOUT.hexCornerOffset(index);
+      const hex = new Hex(col, row);
+      const hexPos = HEX_LAYOUT.hexToPixel(hex).add(this.renderState.offset);
+      const vertexPos = hexPos.add(vertexOffset);
+      const distance = Point.distance(mousePos, vertexPos);
+      if (distance < 20) {
+        foundVertex = true;
+        const vertex = this.renderState.selectedVertex;
+        if (
+          !vertex ||
+          vertex.row !== row ||
+          vertex.col !== col ||
+          vertex.vertex !== index
+        ) {
+          this.renderState.selectedVertex = { row, col, vertex: index };
+          this.renderCb();
+        }
+        break;
+      }
+      if (foundVertex) break;
+    }
+
+    if (!foundVertex && this.renderState.selectedVertex) {
+      this.renderState.selectedVertex = null;
+      this.renderCb();
+    }
   };
 
   handleVertexClick = () => {
@@ -157,36 +187,6 @@ export class TransientEventHandlers {
 
     if (!foundEdge && this.renderState.selectedEdge) {
       this.renderState.selectedEdge = null;
-      this.renderCb();
-    }
-  }
-
-  private checkVertexHover(mousePos: Coordinates, offset: Coordinates): void {
-    let foundVertex = false;
-    for (const [hash, vertexI] of this.gameState.playerAvailableVertices) {
-      const [row, col] = parseHexHash(hash);
-      const hexPos = new HexPoint(row, col, offset);
-      const vertexPos = getVertexPosition(hexPos, vertexI);
-      const distance = Point.distance(mousePos, vertexPos);
-      if (distance < 20) {
-        foundVertex = true;
-        const vertex = this.renderState.selectedVertex;
-        if (
-          !vertex ||
-          vertex.row !== row ||
-          vertex.col !== col ||
-          vertex.vertex !== vertexI
-        ) {
-          this.renderState.selectedVertex = { row, col, vertex: vertexI };
-          this.renderCb();
-        }
-        break;
-      }
-      if (foundVertex) break;
-    }
-
-    if (!foundVertex && this.renderState.selectedVertex) {
-      this.renderState.selectedVertex = null;
       this.renderCb();
     }
   }

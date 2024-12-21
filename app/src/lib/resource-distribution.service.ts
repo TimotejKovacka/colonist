@@ -1,5 +1,6 @@
 import { DEFAULT_HEX_YIELD } from "./constants";
 import type { GameState } from "./game-state";
+import { StatefulHex } from "./state/stateful-hex";
 import type {
   DiceCombination,
   GameHexState,
@@ -35,7 +36,7 @@ export class ResourceDistributionService {
 
   handleRobberEffects() {}
 
-  private calcHexYield(hexState: GameHexState) {
+  private calcHexYield(hexState: StatefulHex) {
     const hexYield: HexYield = { ...DEFAULT_HEX_YIELD };
     for (const { settlement, city } of Object.values(hexState.vertices)) {
       if (settlement) {
