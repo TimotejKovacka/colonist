@@ -1,22 +1,17 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type {
+import {
   Coordinates,
-  VertexCoordinates,
   PlayerColor,
   PlayerGamePiece,
   PlayerPieceName,
-  HexStateIndex,
-  HexHash,
+  CoordinatesHash,
   FiniteResourceType,
   HexSpriteName,
+  Building,
 } from "./types";
 import { DIMENSIONS } from "./constants";
 import { Point } from "./coordinate-system/point";
-import { HexPoint } from "./coordinate-system/hex-point";
-import { Hex } from "./coordinate-system/hex";
-import { Vertex } from "./coordinate-system/vertex";
-import { HEX_LAYOUT } from "./coordinate-system/hex-layout";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -50,56 +45,19 @@ export function getGamePieceName(
   return `${piece}_${player}` as PlayerPieceName;
 }
 
-export function getEdgePosition(vertice: VertexCoordinates): Coordinates {
-  return new Point(new HexPoint(vertice.hex)).add(
-    getEdgeDelta(vertice.vertexIndex)
-  );
-}
-
-function getEdgeDelta(vertexIndex: HexStateIndex): Coordinates {
-  switch (vertexIndex) {
-    case 0:
-      return { x: DIMENSIONS.HEX.WIDTH / 4, y: DIMENSIONS.HEX.HEIGHT / 2 - 32 };
-    case 1:
-      return {
-        x: -DIMENSIONS.HEX.WIDTH / 4,
-        y: DIMENSIONS.HEX.HEIGHT / 2 - 32,
-      };
-    case 2:
-      return {
-        x: -DIMENSIONS.HEX.WIDTH / 2,
-        y: 0,
-      };
-    case 3:
-      return {
-        x: -DIMENSIONS.HEX.WIDTH / 4,
-        y: -DIMENSIONS.HEX.HEIGHT / 2 + 32,
-      };
-    case 4:
-      return {
-        x: DIMENSIONS.HEX.WIDTH / 4,
-        y: -DIMENSIONS.HEX.HEIGHT / 2 + 32,
-      };
-    case 5:
-      return { x: DIMENSIONS.HEX.WIDTH / 2, y: 0 };
-    default:
-      return { x: 0, y: 0 };
+export function getBuildingSpriteName(
+  building: Building.Settlement | Building.City,
+  player: PlayerColor
+): PlayerPieceName {
+  switch (building) {
+    case Building.Settlement:
+      return `settlement_${player}`;
+    case Building.City:
+      return `city_${player}`;
   }
 }
 
-export function getEdgeRotation(vertice: VertexCoordinates): number {
-  // Return rotation in degrees
-  return 60 + vertice.vertexIndex * 60;
-}
-
-export function getValidHexVerticeIndex(index: string): HexStateIndex {
-  const val = Number(index);
-  assertHexVerticeIndex(val);
-
-  return val;
-}
-
-export function toHexHash(row: number, col: number): HexHash {
+export function toHexHash(row: number, col: number): CoordinatesHash {
   return `${row},${col}`;
 }
 export function parseHexHash(s: string): [number, number] {
@@ -107,7 +65,7 @@ export function parseHexHash(s: string): [number, number] {
   return s.split(",").map(Number) as [number, number];
 }
 
-export function assertHexHash(val: string): asserts val is HexHash {
+export function assertHexHash(val: string): asserts val is CoordinatesHash {
   const parsed = val.split(",");
   if (parsed.length !== 2) {
     throw new Error(`${val} is not a valid hex hash`);
@@ -115,19 +73,6 @@ export function assertHexHash(val: string): asserts val is HexHash {
 
   if (parsed.map(Number).filter(Number.isInteger).length !== 2) {
     throw new Error(`${val} is not a valid hex hash`);
-  }
-}
-
-export function assertHexVerticeIndex(
-  index: number
-): asserts index is HexStateIndex {
-  if (
-    Number.isNaN(index) &&
-    !Number.isInteger(index) &&
-    index > 5 &&
-    index < 0
-  ) {
-    throw new Error(`${index} is not a valid hex vertice index`);
   }
 }
 
@@ -153,37 +98,4 @@ export function toHexSpriteName(
   resourceType: FiniteResourceType
 ): HexSpriteName {
   return `hex_${resourceType}`;
-}
-
-export function hexToVertices(h: Hex): Vertex[] {
-  const offset = new Point({
-    x: h.q * 3 + (h.r % 2),
-    y: h.r * 4,
-  });
-
-  return [
-    new Vertex(offset.add({ x: 2, y: 1 })),
-    new Vertex(offset.add({ x: 1, y: 0 })),
-    new Vertex(offset.add({ x: 0, y: 1 })),
-    new Vertex(offset.add({ x: 0, y: 3 })),
-    new Vertex(offset.add({ x: 1, y: 4 })),
-    new Vertex(offset.add({ x: 1, y: 3 })),
-  ];
-}
-
-export function hexesToVertices(hexes: Hex[]): Vertex[] {
-  const vSet = new Set<HexHash>();
-  const vertices: Vertex[] = [];
-
-  for (const hex of hexes) {
-    const vertices = hexToVertices(hex);
-    vertices.forEach((v) => {
-      if (!vSet.has(v.hash)) {
-        vertices.push(v);
-        vSet.add(v.hash);
-      }
-    });
-  }
-
-  return vertices;
 }

@@ -157,7 +157,7 @@ classDiagram
     GameClient --> GameFacade
     GameClient --> WebSocketService
     GameClient --> UIStore
-    
+
     GameFacade --> GameState
     GameFacade --> GameRenderer
     GameFacade --> GameActionService
@@ -167,22 +167,22 @@ classDiagram
 
     GameRenderer --> DrawingService
     GameActionService --> ValidationService
-    
+
     TurnService --> GameState
     TradeService --> GameState
 ```
 
 ## Game Logic
-- Default Board has to include the following:
-    - 4 wood
-    - 4 sheep
-    - 4 wheat
-    - 3 stone
-    - 3 brick
-    - 1 desert
 
+- Default Board has to include the following:
+  - 4 wood
+  - 4 sheep
+  - 4 wheat
+  - 3 stone
+  - 3 brick
+  - 1 desert
 
 # notes
 
-- Start the game by rendering out board
-- 
+- Static site with 2 options (create, join)
+-

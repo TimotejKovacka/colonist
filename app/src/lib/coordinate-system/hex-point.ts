@@ -1,5 +1,5 @@
 import { DIMENSIONS } from "../constants";
-import type { Coordinates, HexCoords, HexHash } from "../types";
+import type { Coordinates, HexCoords, CoordinatesHash } from "../types";
 
 export class HexPoint implements Coordinates, HexCoords {
   readonly row: number;
@@ -40,7 +40,7 @@ export class HexPoint implements Coordinates, HexCoords {
       (resolvedOffset?.y ?? 0);
   }
 
-  toHash(): HexHash {
+  toHash(): CoordinatesHash {
     return `${this.row}-${this.col}`;
   }
 

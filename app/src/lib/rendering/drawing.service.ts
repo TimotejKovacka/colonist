@@ -6,29 +6,25 @@ import {
 } from "../constants";
 import { HexPoint } from "../coordinate-system/hex-point";
 import { HEX_LAYOUT } from "../coordinate-system/hex-layout";
-import { OffsetCoord } from "../coordinate-system/offset-coord";
 import { Point } from "../coordinate-system/point";
 import { ServiceNotInitializedError } from "../error";
-import type {
-  Coordinates,
-  VertexCoordinates,
-  PlayerColor,
-  SpriteName,
-  DiceCombination,
-  GameBoard,
-  HexHash,
-  HexStateIndex,
+import {
+  type Coordinates,
+  type PlayerColor,
+  type SpriteName,
+  type DiceCombination,
+  type Sprite,
+  Building,
 } from "../types";
 import {
-  assertHexVerticeIndex,
-  getBoardToCanvasCenterOffset,
-  getEdgePosition,
-  getEdgeRotation,
+  getBuildingSpriteName,
   getGamePieceName,
-  getVertexPosition,
-  parseHexHash,
   toHexSpriteName,
 } from "../utils";
+import { StatefulHex } from "../state/stateful-hex";
+import { Vertex } from "../coordinate-system/vertex";
+import { Edge } from "../coordinate-system/edge";
+import { StatefulVertex } from "../state/stateful-vertex";
 
 export class DrawingService {
   readonly name = "DrawingService";
@@ -38,8 +34,18 @@ export class DrawingService {
 
   private scale = 1;
 
+  constructor(private sprites: Map<SpriteName, Sprite>) {}
+
   get isInit(): boolean {
     return Boolean(this.isCanvasReady() && this.spriteSheet);
+  }
+
+  getSprite(name: SpriteName) {
+    const sprite = SPRITES.get(name);
+    if (!sprite) {
+      throw new Error(`Sprite "${name}" not found`);
+    }
+    return sprite;
   }
 
   initialize({
@@ -79,12 +85,12 @@ export class DrawingService {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  drawBoard(board: GameBoard, offset: Coordinates): void {
-    for (const hex of Object.values(board)) {
+  drawBoard(hexes: StatefulHex[], offset: Coordinates): void {
+    for (const hex of hexes) {
       const spriteName = toHexSpriteName(hex.resource);
       const pos = HEX_LAYOUT.hexToPixel(hex);
       const pannedPos = pos.add(offset);
-      this.drawSprite(spriteName, pannedPos);
+      this.drawSprite(spriteName, pannedPos, 0, false);
       this.drawCoordinateText(
         pannedPos.add({
           x: HEX_HALF_WIDTH - 48,
@@ -95,7 +101,7 @@ export class DrawingService {
     }
   }
 
-  drawGamePieces(board: GameBoard, offset: Coordinates): void {
+  drawGamePieces(hexes: StatefulHex, offset: Coordinates): void {
     // for (const [hash, hex] of Object.entries(board)) {
     //   // render game pieces (robber, road, settlement, city)
     //   const hexPos = new HexPoint(row, col, offset);
@@ -129,13 +135,14 @@ export class DrawingService {
     // }
   }
 
-  drawSprite(spriteName: SpriteName, coords: Coordinates, rotation = 0): void {
+  drawSprite(
+    spriteName: SpriteName,
+    coords: Coordinates,
+    rotation = 0,
+    center = true
+  ): void {
     const { ctx, sprites } = this.getContext();
-
-    const sprite = SPRITES.get(spriteName);
-    if (!sprite) {
-      throw new Error(`Sprite "${spriteName}" not found`);
-    }
+    const sprite = this.getSprite(spriteName);
 
     ctx.save();
 
@@ -148,8 +155,8 @@ export class DrawingService {
       sprite.y,
       sprite.width,
       sprite.height,
-      0, // dx
-      0, // dy
+      center ? -(sprite.width / 2) : 0, // dx
+      center ? -(sprite.height / 2) : 0, // dy
       sprite.width,
       sprite.height
     );
@@ -204,27 +211,64 @@ export class DrawingService {
     ctx.closePath();
   }
 
-  drawPlayerGamePiece(
-    hexPos: Coordinates,
-    type: "settlement" | "city",
-    player: PlayerColor
+  drawBuilding(
+    vertex: Vertex,
+    offset: Coordinates,
+    building: Building,
+    ownedBy: PlayerColor | null
   ): void {
-    if (!this.isInit) return;
-    const spriteName = getGamePieceName(type, player);
-
-    this.drawSprite(spriteName, hexPos);
+    if (building === Building.None) {
+      console.warn("Trying to draw building NONE");
+      return;
+    }
+    if (ownedBy === null) {
+      throw `Building needs to be owned`;
+    }
+    const spriteName = getBuildingSpriteName(building, ownedBy);
+    this.drawSprite(spriteName, HEX_LAYOUT.vertexToPixel(vertex).add(offset));
   }
 
   drawRoad(
-    edge: VertexCoordinates,
+    edge: Edge,
     player: PlayerColor,
     offset: Coordinates = { x: 0, y: 0 }
   ): void {
     const spriteName = `road_${player}` as SpriteName;
-    const pos = new Point(getEdgePosition(edge)).add(offset);
-    const rotation = getEdgeRotation(edge);
-
-    this.drawSprite(spriteName, pos, rotation);
+    const spriteDef = this.getSprite(spriteName);
+    let pos = HEX_LAYOUT.edgeToPixel(edge).add(offset);
+    if (edge.rotation === 60) {
+      pos = pos.add(
+        HEX_LAYOUT.size.scale({
+          x:
+            (HEX_LAYOUT.orientation.f1 / 2) *
+            Math.sin((60 * Math.PI) / 180) *
+            Math.sign(edge.rotation),
+          y: -Math.cos((60 * Math.PI) / 180),
+        })
+      );
+      pos = pos.addY((spriteDef.width / 2) * this.scale);
+    } else if (edge.rotation === -60) {
+      pos = pos.add(
+        HEX_LAYOUT.size.scale({
+          x:
+            (HEX_LAYOUT.orientation.f1 / 2) *
+            Math.sin((60 * Math.PI) / 180) *
+            Math.sign(edge.rotation),
+          y: -Math.cos((60 * Math.PI) / 180),
+        })
+      );
+      pos = pos.add({
+        x: -spriteDef.width / 2,
+        y: (spriteDef.height / 2 - spriteDef.width / 2) * this.scale,
+      });
+    } else {
+      pos = pos.add({
+        x: (-spriteDef.width / 2) * this.scale,
+        y: (-spriteDef.height / 2) * this.scale,
+      });
+    }
+    console.log(pos);
+    this.drawSprite(spriteName, pos, edge.rotation, false);
   }
 
   drawHexNumber(hexPos: Coordinates, hexNumber: DiceCombination) {
@@ -263,22 +307,29 @@ export class DrawingService {
     ctx.restore();
   }
 
-  drawAvailableBuildingSpots(
-    spots: Array<[HexHash, HexStateIndex]>,
-    offset: Coordinates
-  ): void {
-    if (!this.isCanvasReady()) return;
+  drawAvailableBuildingSpots(spots: Array<Vertex>, offset: Coordinates): void {
     const { ctx } = this.getContext();
     ctx.save();
     ctx.strokeStyle = "black";
     ctx.lineWidth = 3;
-    for (const [hash, index] of spots) {
-      const [row, col] = parseHexHash(hash);
-      const hexPos = new HexPoint(row, col, offset);
-      const vertexPos = getVertexPosition(hexPos, index);
-
+    for (const spot of spots) {
+      const pos = HEX_LAYOUT.vertexToPixel(spot).add(offset);
       ctx.beginPath();
-      ctx.arc(vertexPos.x, vertexPos.y, 15, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  drawAvailableRoadSpots(spots: Array<Edge>, offset: Coordinates): void {
+    const { ctx } = this.getContext();
+    ctx.save();
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 3;
+    for (const spot of spots) {
+      const pos = HEX_LAYOUT.edgeToPixel(spot).add(offset);
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();

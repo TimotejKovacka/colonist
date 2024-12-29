@@ -22,19 +22,6 @@ export interface HexCoords {
   col: number;
 }
 
-/**
- * **4**
- * 3***5
- * 2***0
- * **1**
- */
-export type HexStateIndex = 0 | 1 | 2 | 3 | 4 | 5;
-
-export interface VertexCoordinates {
-  hex: HexCoords;
-  vertexIndex: HexStateIndex; // Starting from top, going clockwise
-}
-
 export interface PanState {
   isPanning: boolean;
   start: Coordinates;
@@ -53,9 +40,7 @@ export type HexSpriteName = `hex_${FiniteResourceType}`;
 
 export type PlayerColor = "red" | "blue";
 
-export type Building = "settlement" | "city";
-
-export type PlayerGamePiece = "road" | Building;
+export type PlayerGamePiece = "road" | "settlement" | "city";
 
 export type PlayerPieceName = `${PlayerGamePiece}_${PlayerColor}`;
 
@@ -88,29 +73,20 @@ export enum Actions {
 
 export type DiceCombination = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
-export type GameVertexState = {
-  road?: PlayerColor;
-  settlement?: PlayerColor;
-  city?: PlayerColor;
+export type CoordinatesHash = `${number},${number}`;
+export type DiceToHexMap = Record<DiceCombination, CoordinatesHash[]>;
+
+export type VertexStatePatch = {
+  building: Building.Settlement | Building.City;
+  player: PlayerColor;
 };
 
-export type GameHexState = {
-  resource: FiniteResourceType;
-  vertices: Record<HexStateIndex, GameVertexState>;
-  robber: boolean;
-  diceVal: DiceCombination;
+export type EdgeStatePatch = {
+  player: PlayerColor;
 };
-
-export type HexHash = `${number},${number}`;
-export type GameBoard = Record<HexHash, StatefulHex>;
-export type DiceToHexMap = Record<DiceCombination, HexHash[]>;
 
 export type HexStatePatch = {
-  vertices: {
-    [vertexIndex in HexStateIndex]?: {
-      [piece in PlayerGamePiece]?: PlayerColor | undefined;
-    };
-  };
+  robber: boolean;
 };
 
 export type HexYield = Record<PlayerColor, number>;
@@ -123,3 +99,22 @@ export type NullablePlayer = PlayerColor | null;
 export type BuildingState = [Building, PlayerColor] | null;
 
 export type IndexedHexState<T> = [T, T, T, T, T, T];
+
+export type PlaneDimensions = {
+  width: number;
+  height: number;
+};
+
+export type ApiBoard = {
+  hex: PlaneDimensions;
+  hexes: {
+    resource: FiniteResourceType;
+    coords: PartialHexCoordinates;
+  }[];
+};
+
+export enum Building {
+  None = 0,
+  Settlement = 1,
+  City = 2,
+}

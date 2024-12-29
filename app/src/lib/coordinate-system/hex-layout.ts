@@ -1,8 +1,4 @@
-import {
-  HEX_CENTER_OFFSET,
-  HEX_HALF_HEIGHT,
-  HEX_HALF_WIDTH,
-} from "../constants";
+import { HEX_CENTER_OFFSET } from "../constants";
 import { Edge } from "./edge";
 import { Hex } from "./hex";
 import { Orientation } from "./orientation";
@@ -11,26 +7,15 @@ import { Vertex } from "./vertex";
 
 class HexLayout {
   static pointy: Orientation = new Orientation(
-    Math.sqrt(3.0),
-    Math.sqrt(3.0) / 2.0,
-    0.0,
-    3.0 / 2.0,
-    Math.sqrt(3.0) / 3.0,
-    -1.0 / 3.0,
-    0.0,
-    2.0 / 3.0,
-    0.5
-  );
-  static flat: Orientation = new Orientation(
-    3.0 / 2.0,
-    0.0,
-    Math.sqrt(3.0) / 2.0,
-    Math.sqrt(3.0),
-    2.0 / 3.0,
-    0.0,
-    -1.0 / 3.0,
-    Math.sqrt(3.0) / 3.0,
-    0.0
+    Math.sqrt(3.0), // f0
+    Math.sqrt(3.0) / 2.0, // f1
+    0.0, // f2
+    3.0 / 2.0, // f3
+    Math.sqrt(3.0) / 3.0, // b0
+    -1.0 / 3.0, // b1
+    0.0, // b2
+    2.0 / 3.0, // b3
+    0.5 // angle
   );
 
   constructor(
@@ -39,6 +24,10 @@ class HexLayout {
     public origin: Point
   ) {}
 
+  /**
+   * [f0, f2] * [x]
+   * [f1, f3]   [y]
+   */
   hexToPixel(h: Hex): Point {
     const M: Orientation = this.orientation;
     return new Point({
@@ -51,12 +40,7 @@ class HexLayout {
 
   pixelToHex(p: Point): Hex {
     const M: Orientation = this.orientation;
-    const size: Point = this.size;
-    const origin: Point = this.origin;
-    const pt: Point = new Point(
-      (p.x - origin.x) / size.x,
-      (p.y - origin.y) / size.y
-    );
+    const pt: Point = p.minus(this.origin).scale(this.size);
     const q: number = M.b0 * pt.x + M.b1 * pt.y;
     const r: number = M.b2 * pt.x + M.b3 * pt.y;
     return new Hex(q, r, -q - r);
@@ -82,29 +66,43 @@ class HexLayout {
     return corners;
   }
 
-  // hexToEdges(h: Hex): Edge[] {
-  //   // const offset = new Point({
-  //   //   x: h.q * 3 + (h.r % 2),
-  //   //   y: h.r * 4,
-  //   // });
-  //   const offset = new Point({
-  //     x: h.q * 4,
-  //     y: h.r * 3 + (h.q % 2),
-  //   });
+  vertexToPixel(v: Vertex): Point {
+    const M = this.orientation;
+    return new Point(v.x * M.f1, v.y / 2).scale(this.size);
+  }
 
-  //   return [
-  //     new Edge(offset.add({ x: 2, y: 1 })),
-  //     new Edge(offset.add({ x: 1, y: 0 })),
-  //     new Edge(offset.add({ x: 0, y: 1 })),
-  //     new Edge(offset.add({ x: 0, y: 3 })),
-  //     new Edge(offset.add({ x: 1, y: 4 })),
-  //     new Edge(offset.add({ x: 1, y: 3 })),
-  //   ];
-  // }
+  pixelToVertex(p: Point): Vertex {
+    const M = this.orientation;
+    return new Vertex({
+      x: Math.round(p.x / this.size.x / M.f1),
+      y: Math.round((p.y / this.size.y) * 2),
+    });
+  }
+
+  edgeToPixel(e: Edge): Point {
+    const M = this.orientation;
+    const size = this.size;
+    const xScale = (M.f1 / 2) * size.x;
+    const yOffset = size.y / 4;
+    const yScale = yOffset * 3;
+    return new Point(e.x * xScale, e.y * yScale + yOffset);
+  }
+
+  pixelToEdge(p: Point): Edge {
+    const M = this.orientation;
+    const size = this.size;
+    const xScale = (M.f1 / 2) * size.x;
+    const yOffset = size.y / 4;
+    const yScale = yOffset * 3;
+    return new Edge({
+      x: Math.round(p.x / xScale),
+      y: Math.round((p.y - yOffset) / yScale),
+    });
+  }
 }
 
 export const HEX_LAYOUT = new HexLayout(
   HexLayout.pointy,
-  new Point(HEX_HALF_WIDTH, HEX_HALF_HEIGHT),
+  new Point(128, 128),
   new Point(0, 0)
 );

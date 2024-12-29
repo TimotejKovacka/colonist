@@ -1,16 +1,11 @@
 import { SPRITE_DEFINITIONS } from "../constants";
-import { HexPoint } from "../coordinate-system/hex-point";
 import { DrawingService } from "./drawing.service";
 import type { GameState } from "../game-state";
 import { DebugRenderer } from "./debug-renderer";
 import { RenderEventHandlers } from "./event-handlers";
 import { RenderState } from "./render-state";
-import type { Sprite, SpriteName } from "../types";
-import { getBoardToCanvasCenterOffset, getVertexPosition } from "../utils";
-import { Hex } from "../coordinate-system/hex";
+import type { PlaneDimensions, Sprite, SpriteName } from "../types";
 import { HEX_LAYOUT } from "../coordinate-system/hex-layout";
-
-const DEBUG = 1;
 
 export class GameRenderer {
   readonly sprites: Map<SpriteName, Sprite> = new Map(
@@ -25,14 +20,16 @@ export class GameRenderer {
   private readonly state: RenderState;
   private readonly events: RenderEventHandlers;
 
-  constructor(private readonly gameState: GameState) {
-    this.state = new RenderState();
-    this.drawingService = new DrawingService();
-    this.debugService = new DebugRenderer(
-      gameState,
-      this.state,
-      this.drawingService
+  constructor(
+    private readonly gameState: GameState,
+    hexDimensions: PlaneDimensions
+  ) {
+    this.state = new RenderState(
+      this.gameState.board.dimensions,
+      hexDimensions
     );
+    this.drawingService = new DrawingService(this.sprites);
+    this.debugService = new DebugRenderer(this.drawingService);
     this.events = new RenderEventHandlers(
       this.state,
       () => this.render(),
@@ -54,10 +51,6 @@ export class GameRenderer {
     }
 
     this.state.initialize(canvas);
-    this.state.centerOffset = getBoardToCanvasCenterOffset(
-      canvas.width,
-      canvas.height
-    );
     await this.loadAssets(canvas, ctx);
     this.events.attachPersistentListeners(canvas);
 
@@ -86,22 +79,53 @@ export class GameRenderer {
     });
   }
 
-  private render(): void {
+  render(): void {
     if (!this.isInit) return;
 
     this.drawingService.drawCanvasBackround();
-
-    const hex = new Hex(0, 0);
-    const pos = HEX_LAYOUT.hexToPixel(hex);
-    this.drawingService.drawDebugCircle(pos, 15);
-    this.drawingService.drawSprite(`hex_brick`, pos);
-    HEX_LAYOUT.polygonCorners(hex).forEach((v) =>
-      this.drawingService.drawDebugCircle(v, 10)
+    this.drawingService.drawBoard(
+      this.gameState.board.hexes,
+      this.state.offset
     );
-    this.drawingService.drawBoard(this.gameState.board, { x: 0, y: 0 });
 
-    // this.debugService.drawVertexGrid();
-    this.debugService.drawEdgeGrid();
+    this.gameState.occupiedBuildingSpots.forEach((v) =>
+      this.drawingService.drawBuilding(
+        v,
+        this.state.offset,
+        v.building,
+        v.ownedBy
+      )
+    );
+
+    this.drawingService.drawAvailableBuildingSpots(
+      this.gameState.getAvailableBuildingSpots(),
+      this.state.offset
+    );
+
+    this.drawingService.drawAvailableRoadSpots(
+      this.gameState.getAvailableRoadSpots(),
+      this.state.offset
+    );
+
+    if (this.state.selectedVertex) {
+      this.drawingService.drawBuilding(
+        this.state.selectedVertex,
+        this.state.offset,
+        this.state.buildingType ?? this.gameState.placingBuilding,
+        this.gameState.playerColor
+      );
+    }
+
+    if (this.state.selectedEdge) {
+      this.drawingService.drawRoad(
+        this.state.selectedEdge,
+        this.gameState.playerColor,
+        this.state.offset
+      );
+    }
+
+    // this.debugService.drawVertexGrid(this.state.offset);
+    // this.debugService.drawEdgeGrid(this.state.offset);
   }
 
   centerBoard(): void {

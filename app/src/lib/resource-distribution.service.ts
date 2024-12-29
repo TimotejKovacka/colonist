@@ -3,9 +3,9 @@ import type { GameState } from "./game-state";
 import { StatefulHex } from "./state/stateful-hex";
 import type {
   DiceCombination,
-  GameHexState,
   HexYield,
   PlayerHandPatch,
+  ResourceType,
 } from "./types";
 import { assertPlayerColor } from "./utils";
 
@@ -13,15 +13,17 @@ export class ResourceDistributionService {
   constructor(private readonly gameState: GameState) {}
 
   distributeToPlayers(roll: DiceCombination) {
-    const hexesHash = this.gameState.getHexesForDiceRoll(roll);
-
-    for (const hexHash of hexesHash) {
-      const hex = this.gameState.board[hexHash];
+    for (const hex of this.gameState.board.diceToHexList(roll)) {
       const hexYield = this.calcHexYield(hex);
       const statePatch = Object.entries(hexYield).reduce<PlayerHandPatch>(
         (acc, [player, val]) => {
           assertPlayerColor(player);
-          acc[player] = Array.from({ length: val }, () => hex.resource);
+          if (hex.resource !== "desert") {
+            acc[player] = Array.from(
+              { length: val },
+              () => hex.resource as ResourceType
+            );
+          }
           return acc;
         },
         {

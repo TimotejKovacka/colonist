@@ -1,6 +1,8 @@
-import type { HexPoint } from "../coordinate-system/hex-point";
+import { Edge } from "../coordinate-system/edge";
+import { Hex } from "../coordinate-system/hex";
 import { Point } from "../coordinate-system/point";
-import type { Coordinates, HexStateIndex } from "../types";
+import { Vertex } from "../coordinate-system/vertex";
+import { PlaneDimensions, Building } from "../types";
 
 export class RenderState {
   private _pan = {
@@ -11,17 +13,27 @@ export class RenderState {
   private _canvas: HTMLCanvasElement | null = null;
   private _centerOffset: Point = new Point(0, 0);
 
-  selectedEdge: {
-    row: number;
-    col: number;
-    vertex: HexStateIndex;
-  } | null = null;
-  hoveredHex: HexPoint | null = null;
-  selectedVertex: { row: number; col: number; vertex: number } | null = null;
-  buildingType: "settlement" | "city" | null = "settlement";
+  constructor(
+    readonly boardDimensions: PlaneDimensions,
+    readonly hexDimensions: PlaneDimensions
+  ) {}
+
+  selectedEdge: Edge | null = null;
+  hoveredHex: Hex | null = null;
+  selectedVertex: Vertex | null = null;
+  buildingType: Building = Building.None;
 
   initialize(canvas: HTMLCanvasElement) {
     this._canvas = canvas;
+    this._centerOffset = new Point({
+      x:
+        canvas.width / 2 -
+        (this.boardDimensions.width / 2) * this.hexDimensions.width,
+      y:
+        canvas.height / 2 -
+        (this.boardDimensions.height / 2) *
+          ((3 / 4) * this.hexDimensions.height),
+    });
   }
 
   resetPan() {
@@ -34,10 +46,6 @@ export class RenderState {
 
   get pan() {
     return this._pan;
-  }
-
-  set centerOffset(coordinates: Coordinates) {
-    this._centerOffset = new Point(coordinates);
   }
 
   get canvas(): HTMLCanvasElement {

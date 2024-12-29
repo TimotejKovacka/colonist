@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { GameFacade } from "@/lib/game-facade";
 import { Button } from "@/components/ui/button";
-import { FocusIcon } from "lucide-react";
+import { FocusIcon, PlayIcon, StopCircleIcon } from "lucide-react";
+import { DebugIcons } from "./DebugIcons";
 
-function App({ game }: { game: GameFacade }) {
+const App: React.FC<{ game: GameFacade }> = ({ game }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +45,15 @@ function App({ game }: { game: GameFacade }) {
         <Button size="icon" onClick={() => game.centerUI()}>
           <FocusIcon />
         </Button>
+        <Button size="icon" onClick={() => game.turnService.startTurn()}>
+          <PlayIcon />
+        </Button>
+        <Button size="icon" onClick={() => game.turnService.endTurn()}>
+          <StopCircleIcon />
+        </Button>
+      </div>
+      <div className="flex">
+        <DebugIcons game={game} />
       </div>
       {error ? (
         <div className="text-red-500">Error: {error}</div>
@@ -51,7 +61,7 @@ function App({ game }: { game: GameFacade }) {
         <canvas
           ref={canvasRef}
           width={1200}
-          height={1200}
+          height={720}
           onDragStart={(e) => e.preventDefault()}
           style={{ touchAction: "none" }}
           className=""
@@ -59,6 +69,6 @@ function App({ game }: { game: GameFacade }) {
       )}
     </div>
   );
-}
+};
 
 export default App;

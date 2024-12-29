@@ -1,27 +1,24 @@
-import { AvailibilityService } from "./availibility-service";
-import { DEFAULT_DICE_HEX_MAP } from "./constants";
+import { Board } from "./board";
+import { Point } from "./coordinate-system/point";
+import { Vertex } from "./coordinate-system/vertex";
 import { EventEmitter } from "./event-emitter";
-import type {
-  DiceCombination,
-  DiceToHexMap,
-  GameBoard,
-  HexStateIndex,
-  HexHash,
-  HexStatePatch,
-  PlayerColor,
-  PlayerHand,
-  PlayerHandPatch,
-} from "./types";
+import { StatefulEdge } from "./state/stateful-edge";
+import { StatefulVertex } from "./state/stateful-vertex";
 import {
-  assertGamePiece,
-  assertHexHash,
-  assertPlayerColor,
-  getValidHexVerticeIndex,
-} from "./utils";
+  type CoordinatesHash,
+  type PlayerColor,
+  type PlayerHand,
+  type PlayerHandPatch,
+  type ApiBoard,
+  type VertexStatePatch,
+  type EdgeStatePatch,
+  Building,
+  HexStatePatch,
+} from "./types";
+import { assertPlayerColor } from "./utils";
 
 export type PlayerBuildingEventHandler = (
-  hexHash: HexHash,
-  vertex: HexStateIndex,
+  hash: CoordinatesHash,
   player: PlayerColor
 ) => void;
 
@@ -29,7 +26,7 @@ export type GameStateEvents = {
   buildRoad: PlayerBuildingEventHandler;
   buildSettlement: PlayerBuildingEventHandler;
   buildCity: PlayerBuildingEventHandler;
-  robberPlaced: (hexHash: HexHash, players: PlayerColor[]) => void;
+  robberPlaced: (hexHash: CoordinatesHash, players: PlayerColor[]) => void;
   playerHandUpdated: (player: PlayerColor, hand: PlayerHand) => void;
   turnPhaseChange: (phase: "start" | "end") => void;
 };
@@ -37,8 +34,8 @@ export type GameStateEvents = {
 export class GameState {
   //
   readonly playerColor: PlayerColor;
-  readonly diceToHexMap: DiceToHexMap;
-  readonly board: GameBoard;
+  readonly board: Board;
+  // TODO(now): players should be provided by server
   readonly playerHands: Record<PlayerColor, PlayerHand> = {
     red: [],
     blue: [],
@@ -46,34 +43,50 @@ export class GameState {
 
   //
   private readonly ee: EventEmitter<GameStateEvents> = new EventEmitter();
-  private readonly availibilityService: AvailibilityService;
+
+  private _playerAvailableVertices: Array<StatefulVertex>;
+  private _playerAvailableEdges: Array<StatefulEdge>;
+
+  // Player selection
+  public placingBuilding: Building = Building.None;
+  public placingRoad = false;
 
   //
-  private turnState: "start" | "end" = "end";
+  gamePhase: "placement" | "ongoing" | "end" = "placement";
+  turnState: "start" | "end" = "end";
 
   constructor({
     board,
     playerColor,
   }: {
-    board: GameBoard;
+    board: ApiBoard;
     playerColor: PlayerColor;
   }) {
     this.playerColor = playerColor;
-    this.board = board;
-    this.diceToHexMap = boardToDiceHexMap(board);
-    this.availibilityService = new AvailibilityService(board, playerColor);
+    this.board = new Board(board);
+    this._playerAvailableVertices = this.board.vertices;
+    this._playerAvailableEdges = this.board.edges;
   }
 
-  get playerAvailableVertices() {
-    return this.availibilityService.vertices;
+  get occupiedBuildingSpots(): StatefulVertex[] {
+    return this.board.vertices.filter((v) => v.building);
   }
 
-  get playerAvailableEdges() {
-    return this.availibilityService.edges;
+  // TODO(soon): could be cached
+  getAvailableBuildingSpots() {
+    if (this.placingBuilding === Building.None) {
+      return [];
+    }
+    return this._playerAvailableVertices.filter(
+      (v) => v.building === this.placingBuilding - 1
+    );
   }
 
-  getHexesForDiceRoll(roll: DiceCombination): HexHash[] {
-    return this.diceToHexMap[roll];
+  getAvailableRoadSpots() {
+    if (!this.placingRoad) {
+      return [];
+    }
+    return this._playerAvailableEdges;
   }
 
   updateHandState(patch: PlayerHandPatch): void {
@@ -92,63 +105,75 @@ export class GameState {
     }
   }
 
-  // updateBoardState(hexHash: HexHash, patch: "robber" | HexStatePatch): void {
-  //   const hex = this.board[hexHash];
-  //   if (!hex) {
-  //     throw new Error("Unknown game hex");
-  //   }
-  //   console.log("Board patch", patch);
+  updateVertexState(hash: CoordinatesHash, patch: VertexStatePatch) {
+    const vertex = this.board.vertex(hash);
+    // Validation
+    if (vertex.ownedBy && vertex.ownedBy !== patch.player) {
+      throw `Can't build on vertex owned by other player`;
+    }
+    if (!vertex.building && patch.building === Building.City) {
+      throw `Can't build city without prior settlement`;
+    }
+    if (vertex.building === patch.building) {
+      throw `Can't build building of same type on vertex`;
+    }
+    // Mutation
+    vertex.update(patch);
+    const vertexNeighbours = [
+      ...vertex.neighbours().filter((v) => this.board.vertex(v.hash, false)),
+      vertex,
+    ];
+    this._playerAvailableVertices = this._playerAvailableVertices.filter((v) =>
+      vertexNeighbours.every((v1) => !Point.isEq(v, v1))
+    );
+    console.log("Availibility updated", this._playerAvailableVertices.length);
+    // Notification
+    switch (patch.building) {
+      case Building.Settlement:
+        this.ee.emit("buildSettlement", hash, patch.player);
+        return;
+      case Building.City:
+        this.ee.emit("buildCity", hash, patch.player);
+        return;
+    }
+  }
 
-  //   if (patch === "robber") {
-  //     hex.hasRobber = true;
-  //     const playersAffected = [
-  //       ...new Set(
-  //         Object.values(hex.vertices).flatMap(
-  //           ({ city, settlement }) =>
-  //             [city, settlement].filter(Boolean) as PlayerColor[]
-  //         )
-  //       ),
-  //     ];
-  //     console.log("New state", this.board);
-  //     this.ee.emit("robberPlaced", hexHash, playersAffected);
-  //     return;
-  //   }
+  updateEdgeState(hash: CoordinatesHash, patch: EdgeStatePatch) {
+    const edge = this.board.edge(hash);
+    // Validation
+    if (edge.ownedBy) {
+      throw `Can't build on edge owned by other player`;
+    }
+    // Mutation
+    edge.update(patch);
+    console.log(`${edge.toString()} updated`, patch);
+    this._playerAvailableEdges = this._playerAvailableEdges.filter(
+      (e) => !Point.isEq(e, edge)
+    );
+    console.log("Availibility updated", this._playerAvailableEdges.length);
+    // Notification
+    this.ee.emit("buildRoad", hash, patch.player);
+  }
 
-  //   if ("vertices" in patch) {
-  //     for (const [vertexIndex, updates] of Object.entries(patch.vertices)) {
-  //       const vertexToUpdate = getValidHexVerticeIndex(vertexIndex);
-  //       for (const [piece, player] of Object.entries(updates)) {
-  //         assertGamePiece(piece);
-  //         hex.vertices[vertexToUpdate][piece] = player;
-  //         console.log("New state", this.board);
-  //         switch (piece) {
-  //           case "road":
-  //             this.ee.emit("buildRoad", hexHash, vertexToUpdate, player);
-  //             this.availibilityService.handleBuildingPlayersRoad(
-  //               this.board,
-  //               hexHash,
-  //               vertexToUpdate
-  //             );
-  //             break;
-  //           case "settlement":
-  //             this.availibilityService.handleBuildingPlayersSettlement(
-  //               this.board,
-  //               hexHash,
-  //               vertexToUpdate
-  //             );
-  //             this.ee.emit("buildSettlement", hexHash, vertexToUpdate, player);
-  //             break;
-  //           case "city":
-  //             this.ee.emit("buildCity", hexHash, vertexToUpdate, player);
-  //             break;
-  //         }
-  //       }
-  //     }
-  //     return;
-  //   }
+  updateHexState(hash: CoordinatesHash) {
+    const patch: HexStatePatch = { robber: true };
+    const hex = this.board.hex(hash);
+    // Validation
+    if (hex.hasRobber) {
+      throw `Can't place robber on the same spot`;
+    }
+    // Mutation
+    // Will require knowing currently robbed hex for animation
+    // TODO(now): source needs to be updated
+    hex.update(patch); // destination
+    console.log(`${hex.toString()} updated`, patch);
 
-  //   throw new Error("Unknown board update");
-  // }
+    // Notification
+    const affectedPlayers = Vertex.fromCube(hex)
+      .map((v) => this.board.vertex(v.hash).ownedBy)
+      .filter((p) => p !== null);
+    this.ee.emit("robberPlaced", hash, affectedPlayers);
+  }
 
   updateTurnState(newState: "start" | "end") {
     console.log("Turn patch", newState);
@@ -162,15 +187,4 @@ export class GameState {
   on = this.ee.on;
   off = this.ee.off;
   once = this.ee.once;
-}
-
-function boardToDiceHexMap(board: GameBoard): DiceToHexMap {
-  const map = { ...DEFAULT_DICE_HEX_MAP };
-
-  for (const [hash, { dice }] of Object.entries(board)) {
-    assertHexHash(hash);
-    map[dice].push(hash);
-  }
-
-  return map;
 }

@@ -1,4 +1,5 @@
-import { HexHash, HexStateIndex } from "../types";
+import { CoordinatesHash } from "../types";
+import { Point } from "./point";
 
 export class Hex {
   static diagonals: Hex[] = [
@@ -27,10 +28,6 @@ export class Hex {
     return a.q === b.q && a.r === b.r && a.s === b.s;
   }
 
-  static truncateIndex(i: number): HexStateIndex {
-    return ((i + 6) % 6) as HexStateIndex;
-  }
-
   public s: number;
 
   constructor(public q: number, public r: number, s?: number) {
@@ -40,7 +37,7 @@ export class Hex {
   }
 
   /** Returns the hashed representation of the Hex */
-  get hash(): HexHash {
+  get hash(): CoordinatesHash {
     return `${this.q},${this.r}`;
   }
 
@@ -48,16 +45,20 @@ export class Hex {
     return Hex.directions.map((_, i) => this.neighbor(i));
   }
 
-  sameVertex(
-    vertex: HexStateIndex
-  ): [[Hex, HexStateIndex], [Hex, HexStateIndex]] {
+  get vertices(): CoordinatesHash[] {
+    const vertexCoord = new Point({
+      x: this.q * 3 + (this.r % 2),
+      y: this.r * 4,
+    });
+
     return [
-      [this.neighbor(vertex), Hex.truncateIndex(vertex + 2)],
-      [
-        this.neighbor(Hex.truncateIndex(vertex + 1)),
-        Hex.truncateIndex(vertex + 4),
-      ],
-    ];
+      vertexCoord.add({ x: 2, y: 1 }),
+      vertexCoord.add({ x: 1, y: 0 }),
+      vertexCoord.add({ x: 0, y: 1 }),
+      vertexCoord.add({ x: 0, y: 3 }),
+      vertexCoord.add({ x: 1, y: 4 }),
+      vertexCoord.add({ x: 1, y: 3 }),
+    ].map((p) => p.hash);
   }
 
   add(b: Hex): Hex {
