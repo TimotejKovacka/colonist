@@ -1,10 +1,8 @@
-import { Static, Type } from "@sinclair/typebox";
+import { type Static, Type } from "@sinclair/typebox";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { typeboxResolver } from "@hookform/resolvers/typebox";
-import { LobbyModel } from "../model";
 import { useForm } from "react-hook-form";
-import { api } from "@/lib/api";
 import {
   Form,
   FormControl,
@@ -21,9 +19,12 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { Button } from "@/components/ui/button";
+import { useStore } from "@/contexts/StoreContext";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const schema = Type.Object({
-  pin: Type.String({
+  shareCode: Type.String({
     minLength: 6,
     maxLength: 6,
     pattern: REGEXP_ONLY_DIGITS_AND_CHARS,
@@ -32,22 +33,32 @@ const schema = Type.Object({
 const typecheck = TypeCompiler.Compile(schema);
 type FormValues = Static<typeof schema>;
 
-export const JoinLobbyForm: React.FC<{ lobbyModel: LobbyModel }> = ({
-  lobbyModel,
-}) => {
+export const JoinLobbyForm: React.FC = () => {
+  const { lobbyStore } = useStore();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const form = useForm<FormValues>({
     resolver: typeboxResolver(typecheck),
     defaultValues: {
-      pin: "",
+      shareCode: "",
     },
   });
 
   const onSubmit = async (data: FormValues) => {
-    const resp = await api.get("/lobby/join", {
-      data,
-    });
-
-    console.log("submit response", resp.data);
+    try {
+      await lobbyStore.joinLobby(data.shareCode);
+      // You might want to navigate to the lobby page here
+      toast({
+        title: "Successfully joined lobby",
+      });
+      navigate(`/lobby/${data.shareCode}`);
+    } catch (error) {
+      // Handle error (maybe show a toast notification)
+      form.setError("shareCode", {
+        type: "manual",
+        message: "Invalid or expired share code",
+      });
+    }
   };
 
   return (
@@ -55,7 +66,7 @@ export const JoinLobbyForm: React.FC<{ lobbyModel: LobbyModel }> = ({
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <FormField
           control={form.control}
-          name="pin"
+          name="shareCode"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Game share-code</FormLabel>

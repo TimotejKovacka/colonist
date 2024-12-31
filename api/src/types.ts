@@ -11,9 +11,12 @@ export type WsMessage = {
   payload: any;
 };
 
-export interface Player {
+export interface PlayerData {
   id: string;
   name: string;
+}
+
+export interface SessionPlayer extends PlayerData {
   joinedAt: number;
 }
 
@@ -22,12 +25,4 @@ export interface GameSettings {
   image: string;
   speed: "normal";
   maxPoints: number;
-}
-
-export interface Lobby {
-  id: string;
-  ownerId: string;
-  players: Player[];
-  settings: GameSettings;
-  createdAt: number;
 }
