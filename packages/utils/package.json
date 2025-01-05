@@ -1,0 +1,19 @@
+{
+  "name": "@colonist/utils",
+  "version": "0.0.1",
+  "description": "",
+  "private": true,
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [],
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.32.35",
+    "uuid": "^11.0.3"
+  }
+}

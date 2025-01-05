@@ -1,5 +1,24 @@
 version: "3.8"
 services:
+  postgres:
+      image: postgres:17-alpine
+      ports:
+        - 5432:5432
+      environment:
+        - POSTGRES_PASSWORD=admin
+        - POSTGRES_USER=admin
+        - POSTGRES_DB=test_db
+      networks:
+        - app-network
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+    depends_on:
+      - postgres
+
   redis:
     image: redis:alpine
     ports:
@@ -34,6 +53,7 @@ services:
 
 volumes:
   redis_data:
+  cloudbeaver_data:
 
 networks:
   app-network:

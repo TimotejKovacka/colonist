@@ -1,0 +1,65 @@
+{
+  "name": "@colonist/api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "run": "node dist/main.js",
+    "deps": "../scripts/docker-compose.sh && pnpm run redis:seed",
+    "redis:flush": "node ./scripts/flush-redis.js",
+    "redis:seed": "node ./scripts/seed-redis.js",
+    "typeorm": "typeorm-ts-node-esm",
+    "migration:generate": "pnpm run build && pnpm run typeorm migration:generate -d scripts/migrations-data-source.ts",
+    "migration:create": "pnpm run build && pnpm run typeorm migration:create",
+    "migration:run": "pnpm run build && pnpm run typeorm migration:run -d scripts/migrations-data-source.ts",
+    "migration:revert": "pnpm run build && pnpm run typeorm migration:revert -d scripts/migrations-data-source.ts",
+    "migration:show": "pnpm run build && pnpm run typeorm migration:show -d scripts/migrations-data-source.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@colonist/api-contracts": "workspace:*",
+    "@fastify/cookie": "^7.x",
+    "@fastify/cors": "^8.5.0",
+    "@fastify/sensible": "^5.6.0",
+    "@fastify/session": "^10.9.0",
+    "@fastify/swagger": "^8.15.0",
+    "@fastify/swagger-ui": "^4.2.0",
+    "@fastify/type-provider-typebox": "^4.1.0",
+    "@fastify/websocket": "^10.0.1",
+    "@sinclair/typebox": "^0.32.35",
+    "connect-redis": "^8.0.1",
+    "env-schema": "^6.0.0",
+    "fastify": "^4.29.0",
+    "http-errors": "^2.0.0",
+    "ioredis": "^5.4.2",
+    "jose": "^5.9.6",
+    "lodash.chunk": "^4.2.0",
+    "pg": "^8.13.1",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "tslib": "^2.8.1",
+    "typeorm": "^0.3.20",
+    "unique-names-generator": "^4.7.1",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/http-errors": "^2.0.4",
+    "@types/lodash.chunk": "^4.2.9",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/ws": "^8.5.13",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@sinclair/typebox": "patches/@sinclair__typebox.patch"
+    }
+  }
+}

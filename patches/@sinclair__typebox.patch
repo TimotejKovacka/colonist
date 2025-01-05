@@ -1,0 +1,32 @@
+diff --git a/build/cjs/value/default/default.js b/build/cjs/value/default/default.js
+index fa2a644af68853d8d655f9c7b0f4eea25b0a183e..2e9e0586cc0bc4d0b0bc3603c0abeb1cdf7c4e9a 100644
+--- a/build/cjs/value/default/default.js
++++ b/build/cjs/value/default/default.js
+@@ -118,9 +118,8 @@ function FromTuple(schema, references, value) {
+ function FromUnion(schema, references, value) {
+     const defaulted = ValueOrDefault(schema, value);
+     for (const inner of schema.anyOf) {
+-        const result = Visit(inner, references, defaulted);
+-        if (IsCheckable(inner) && (0, index_1.Check)(inner, result)) {
+-            return result;
++        if (IsCheckable(inner) && (0, index_1.Check)(inner, defaulted)) {
++            return Visit(inner, references, defaulted);
+         }
+     }
+     return defaulted;
+diff --git a/build/esm/value/default/default.mjs b/build/esm/value/default/default.mjs
+index 39812e7abb05bce94187e54ce9987c6e78541d8d..d86fd677fcdfb6675ffb169ac3d6cbb99e3b6733 100644
+--- a/build/esm/value/default/default.mjs
++++ b/build/esm/value/default/default.mjs
+@@ -114,9 +114,8 @@ function FromTuple(schema, references, value) {
+ function FromUnion(schema, references, value) {
+     const defaulted = ValueOrDefault(schema, value);
+     for (const inner of schema.anyOf) {
+-        const result = Visit(inner, references, defaulted);
+-        if (IsCheckable(inner) && Check(inner, result)) {
+-            return result;
++        if (IsCheckable(inner) && Check(inner, defaulted)) {
++            return Visit(inner, references, defaulted)
+         }
+     }
+     return defaulted;
