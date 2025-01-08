@@ -1,8 +1,8 @@
 import { CreateLobby } from "@/components/CreateLobby";
 import { JoinLobbyForm } from "@/components/JoinLobbyForm";
-import type { Logger } from "@/lib/logger";
+import type { Logger } from "@colonist/utils";
 
-const HomePage: React.FC<{ logger: Logger }> = (deps) => (
+const HomePage: React.FC<{ logger: Logger }> = () => (
   <div className="container mx-auto px-4 py-8">
     <div className="max-w-2xl mx-auto space-y-8">
       <div className="space-y-4">
@@ -15,7 +15,7 @@ const HomePage: React.FC<{ logger: Logger }> = (deps) => (
       <div className="grid gap-8 md:grid-cols-2">
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Create New Game</h2>
-          <CreateLobby {...deps} />
+          <CreateLobby />
         </div>
 
         <div className="space-y-4">

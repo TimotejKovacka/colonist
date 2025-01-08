@@ -1,4 +1,4 @@
-import { mathRandomSecure } from "./math-random-secure";
+import { mathRandomSecure } from "./math-random-secure.js";
 
 export function getRandomString(
   length: number,

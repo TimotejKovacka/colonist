@@ -1,0 +1,21 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"types": ["jest", "node"],
+		"lib": ["ES2022", "DOM"],
+		"rootDir": ".",
+		"noEmit": true,
+		// Less strict checks for test files
+		"strict": true,
+		"noImplicitAny": false,
+		"noUnusedLocals": false,
+		"noUnusedParameters": false
+	},
+	"include": [
+		"src/**/*.test.ts",
+		"src/**/*.spec.ts",
+		"test/**/*.ts",
+		"**/__tests__/**/*.ts"
+	]
+}

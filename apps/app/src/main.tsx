@@ -9,7 +9,10 @@ import { createBrowserRouter } from "react-router-dom";
 import Home from "@/pages/Home";
 import Lobby from "@/pages/Lobby";
 import { RootLayout } from "@/components/RootLayout";
-import { ConsoleLogger, type Logger } from "@/lib/logger";
+import { ConsoleLogger, type Logger } from "@colonist/utils";
+import { AuthProvider } from "./components/AuthProvider.tsx";
+import { ToastProvider } from "./components/ToastProvider.tsx";
+import { WebSocketProvider } from "./contexts/ws-context.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,7 +27,7 @@ export interface MainInit {
   logger: Logger;
 }
 
-const appLogger = new ConsoleLogger({ module: "app" });
+export const appLogger = new ConsoleLogger({ module: "app" });
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -53,9 +56,15 @@ export const router = createBrowserRouter([
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <Toaster />
-      <ReactQueryDevtools />
+      <AuthProvider>
+        <ToastProvider>
+          <WebSocketProvider>
+            <RouterProvider router={router} />
+          </WebSocketProvider>
+        </ToastProvider>
+        <Toaster />
+        <ReactQueryDevtools />
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>
 );

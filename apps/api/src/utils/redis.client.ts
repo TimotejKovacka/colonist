@@ -1,9 +1,6 @@
 import { Redis } from "ioredis";
-import {
-  ServiceNode,
-  type ServiceParent,
-} from "../../../../packages/backend-utils/src/service.js";
-import { assert } from "../../../../packages/utils/src/assert.js";
+import { ServiceNode, type ServiceParent } from "@colonist/backend-utils";
+import { assert } from "@colonist/utils";
 
 type RedisConfig = {
   host: string;
@@ -27,11 +24,11 @@ export class RedisService extends ServiceNode {
     );
   }
 
-  override async nodeStart() {
+  protected async nodeStart() {
     await this.redis.connect();
   }
 
-  override async nodeStop() {
+  protected async nodeStop() {
     if (this.redis.status === "connect" || this.redis.status === "connecting") {
       await new Promise((resolve) => {
         this.redis.on("ready", resolve);
@@ -47,7 +44,7 @@ export class RedisService extends ServiceNode {
     await closedPromise;
   }
 
-  protected override nodeAssertAlive(): void {
+  protected nodeAssertAlive(): void {
     assert(this.redis.status === "ready");
   }
 }

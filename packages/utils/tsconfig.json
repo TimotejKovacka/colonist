@@ -1,13 +1,27 @@
 {
+	"$schema": "https://json.schemastore.org/tsconfig",
 	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"module": "NodeNext"
+		// Override base config for dual browser/node support
+		"lib": ["ES2022", "DOM"],
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+
+		// Output configuration
+		"rootDir": "./src",
+		"outDir": "./dist",
+
+		// Generate separate type definitions
+		"declaration": true,
+		"declarationMap": true
 	},
-	"files": [],
-	"include": [],
-	"references": [
-		{
-			"path": "./tsconfig.lib.json"
-		}
+	"include": ["src/**/*.ts"],
+	"exclude": [
+		"**/*.test.ts",
+		"**/*.spec.ts",
+		"**/__tests__/**",
+		"**/test/**",
+		"node_modules",
+		"dist"
 	]
 }

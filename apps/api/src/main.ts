@@ -1,7 +1,7 @@
 import { getEnvConfig } from "./env.js";
-import { RootService } from "../../../packages/backend-utils/src/service.js";
 import { initServices, prepareServer, registerRoutes } from "./bootstrap.js";
 import { ServerBooter } from "./server-booter.js";
+import { RootService } from "@colonist/backend-utils";
 
 async function main() {
   process.title = "Settlers API";

@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api } from "./base-api";
 import type { UserState } from "@/stores/user-store";
 
 export type AuthenticateRequest = {
@@ -9,15 +9,11 @@ export type AuthenticateRequest = {
 };
 
 export const authApi = {
-  getUserState: async () => {
-    const { data } = await api.post<UserState>("/auth/userState");
-    return data;
-  },
   logout: async () => {
     const { data } = await api.post("/auth/logout");
     return data;
   },
-  authorize: async (body?: AuthenticateRequest) => {
+  authenticate: async (body?: AuthenticateRequest) => {
     const { data } = await api.post<{ user: UserState; token: string }>(
       "/auth/authenticate",
       body ?? {}

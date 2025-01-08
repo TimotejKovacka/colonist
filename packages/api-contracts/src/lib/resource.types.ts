@@ -266,6 +266,10 @@ export const resourcePostIds = <TResource extends BaseResource>(
 //
 // ref of resource
 //
+export const refSchemaOfResourceSchema = <TResource extends BaseResource>(
+  resource: TResource
+) => resource.ref;
+
 export const pickResourceRef = <TResource extends BaseResource>(
   resource: TResource,
   ref: ResourceRef<TResource>
@@ -295,12 +299,14 @@ export function isRefType<TResource extends BaseResource>(
 //
 // idsModifiedAt of resource
 //
-export const resourceIdsModifiedAtSchema = <TResource extends BaseResource>(
+export const idsModifiedAtSchemaOfResoureSchema = <
+  TResource extends BaseResource
+>(
   resource: TResource
 ) => Type.Composite([resource.idsSchema, modifiedAtSchema]);
 export type ResourceIdsModifiedAt<TResource extends BaseResource> =
   ResourceIds<TResource> & Static<typeof modifiedAtSchema>;
-export const pickDtoIdsModifiedAt = <TResource extends BaseResource>(
+export const idsModifiedAtOfResourcce = <TResource extends BaseResource>(
   resource: TResource,
   dto: ResourceDto<TResource>
 ): ResourceIdsModifiedAt<TResource> => ({
@@ -311,7 +317,7 @@ export const pickDtoIdsModifiedAt = <TResource extends BaseResource>(
 //
 // body of resource
 //
-export function pickDtoBody<TResource extends BaseResource>(
+export function bodyOfResource<TResource extends BaseResource>(
   resource: TResource,
   dto: ResourceDto<TResource>
 ): ResourceBody<TResource> {
@@ -330,7 +336,7 @@ export function putResource<TResource extends BaseResource>(
   oldDto: ResourceDto<TResource> | undefined,
   body: ResourceBody<TResource>
 ): ResourceDto<TResource> {
-  if (oldDto && Value.Equal(pickDtoBody(resource, oldDto), body)) {
+  if (oldDto && Value.Equal(bodyOfResource(resource, oldDto), body)) {
     return oldDto;
   }
   if (oldDto?.isDeleted === true) {
@@ -404,6 +410,22 @@ export const stringifyResourcePathImpl = <TResource extends BaseResource>(
   return `${idsPath}/${resource.type}`;
 };
 
+export const querifyResourceIdsImpl = <TResource extends BaseResource>(
+  resource: TResource,
+  idsOrder: string[],
+  ids: ResourceIds<TResource>
+): string[] => {
+  const idPairs = idsOrder.flatMap((idKey) => {
+    const value = (ids as Record<string, string>)[idKey];
+    if (typeof value !== "string") {
+      throw new Error(`Missing or invalid ID value for key: ${idKey}`);
+    }
+    return [idKey, value];
+  });
+
+  return [...idPairs, resource.type];
+};
+
 export const parseRefPath = (refPath: string): BaseResourceRef => {
   const pathParts = refPath.split("/");
   const type = pathParts.splice(0, 1)[0] ?? "";
@@ -429,6 +451,14 @@ export const stringifyResourcePath = <TResource extends BaseResource>(
 ) => stringifyResourcePathImpl(resource, resource.idsOrder, ids);
 
 /**
+ * Query keys in the format [:idKey0, :id0, :idKey1, :id1, ..., :resourceType]
+ */
+export const querifyResourceIds = <TResource extends BaseResource>(
+  resource: TResource,
+  ids: ResourceIds<TResource>
+) => querifyResourceIdsImpl(resource, resource.idsOrder, ids);
+
+/**
  * Post resource path used in POST routes in format `/:resourceType/:idKey0/:id0/:idKey1/:id1/...`
  */
 export const stringifyPostPath = <TResource extends BaseResource>(
@@ -436,12 +466,25 @@ export const stringifyPostPath = <TResource extends BaseResource>(
   ids: ResourceIds<TResource>
 ) => stringifyResourcePathImpl(resource, resourcePostIdsOrder(resource), ids);
 
+export const querifyPostIds = <TResource extends BaseResource>(
+  resource: TResource,
+  ids: ResourceIds<TResource>
+) => querifyResourceIdsImpl(resource, resourcePostIdsOrder(resource), ids);
+
 export function stringifyMethodPath<TResource extends BaseResource>(
   resource: TResource,
   ids: ResourceIds<TResource>,
   method: keyof TResource["methods"]
 ) {
   return `${stringifyResourcePath(resource, ids)}/${String(method)}`;
+}
+
+export function querifyMethodIds<TResource extends BaseResource>(
+  resource: TResource,
+  ids: ResourceIds<TResource>,
+  method: keyof TResource["methods"]
+) {
+  return [...querifyResourceIds(resource, ids), String(method)];
 }
 
 /** Hashes ref into v5 uuid */

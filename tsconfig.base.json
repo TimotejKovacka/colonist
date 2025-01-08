@@ -1,34 +1,45 @@
 {
-	"compileOnSave": false,
+	"$schema": "https://json.schemastore.org/tsconfig",
 	"compilerOptions": {
-		"rootDir": ".",
-		"sourceMap": true,
-		"moduleResolution": "nodenext",
-		"experimentalDecorators": true,
-		"emitDecoratorMetadata": true,
-		"importHelpers": true,
-		"target": "ES2024",
-		"skipLibCheck": true,
-		"skipDefaultLibCheck": true,
-		"baseUrl": ".",
-		"allowSyntheticDefaultImports": true,
-		"composite": false,
-		"declaration": true,
-		"downlevelIteration": true,
-		"forceConsistentCasingInFileNames": true,
-		"incremental": true,
-		"module": "ESNext",
-		"noFallthroughCasesInSwitch": true,
+		// Modern JS Features
+		"target": "ES2022",
+		"lib": ["ES2022"],
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+
+		// Stricter Type-Checking
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		// "exactOptionalPropertyTypes": true, // too restrictive
 		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
-		"outDir": "./dist",
-		"removeComments": true,
+		"noImplicitOverride": true,
+
+		// Module Resolution
 		"resolveJsonModule": true,
-		"sourceRoot": "/",
-		"strict": true,
-		"strictNullChecks": true,
-		"types": []
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"verbatimModuleSyntax": true,
+
+		// Project Organization
+		"composite": true,
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+
+		// Build Output
+		"newLine": "lf",
+		"noEmitOnError": true,
+		"preserveConstEnums": true,
+
+		// Path Config
+		"baseUrl": ".",
+		"rootDir": "src",
+		"outDir": "dist"
 	},
-	"exclude": ["node_modules", "dist", "tmp"]
+	"exclude": ["**/node_modules", "**/dist", "**/test"]
 }

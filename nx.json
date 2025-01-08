@@ -1,0 +1,26 @@
+{
+  "taskRunnerOptions": {
+    "default": {
+      "runner": "nx/tasks-runners/default",
+      "options": {
+        "cacheableOperations": ["build", "lint", "test", "rebuild"]
+      }
+    }
+  },
+  "namedInputs": {
+    "noMarkdown": ["!{projectRoot}/**/*.md"]
+  },
+  "targetDefaults": {
+    "build": {
+      "inputs": ["noMarkdown", "^noMarkdown"],
+      "dependsOn": ["^build"]
+    },
+    "rebuild": {
+      "inputs": ["noMarkdown", "^noMarkdown"],
+      "dependsOn": ["^rebuild"]
+    },
+    "dev": {
+      "dependsOn": ["^build"]
+    }
+  }
+}

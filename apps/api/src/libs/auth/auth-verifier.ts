@@ -2,17 +2,17 @@ import { importSPKI, type JWTPayload, jwtVerify, type KeyLike } from "jose";
 import {
   ServiceContainer,
   type ServiceParent,
-} from "../../../../../packages/backend-utils/src/service.js";
-import type { NoOverride } from "../../../../../packages/backend-utils/src/no-override.js";
-import { assert } from "../../../../../packages/utils/src/assert.js";
-import type { SessionId } from "../api-contracts/session.types.js";
-import type { UserId } from "../api-contracts/user.types.js";
+  type NoOverride,
+} from "@colonist/backend-utils";
+import { assert } from "@colonist/utils";
+import type { UserId } from "@colonist/api-contracts";
 import { readFileSync } from "node:fs";
+import type { Claim } from "./auth-issuer.js";
 
 export interface AuthContext extends JWTPayload {
   sub: UserId;
   name: string;
-  sessionId?: SessionId;
+  sessionId?: Claim;
 }
 
 export class AuthVerifier extends ServiceContainer {

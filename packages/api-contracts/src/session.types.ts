@@ -5,7 +5,7 @@ import {
   createResource,
   type ResourceMethodSchemas,
 } from "./lib/index.js";
-import { userIdSchema, userIdSchemas } from "./user.types.js";
+import { userIdSchemas } from "./user.types.js";
 
 export const sessionType = "session" as const;
 export type SessionAuthRole = "owner" | "participant" | undefined;
@@ -37,86 +37,8 @@ export function generateSessionId(): SessionId {
   return code as SessionId;
 }
 
-// export const sessionSettingsBodySchema = Type.Object(
-//   {
-//     isPublic: Type.Boolean({
-//       default: true,
-//       description: "Whether the session is publicly visible",
-//       examples: [true],
-//     }),
-//     gameMode: Type.String({
-//       enum: ["standard", "extended", "custom"],
-//       default: "standard",
-//       description: "Game mode configuration",
-//       examples: ["standard"],
-//     }),
-//     gameSpeed: Type.Integer({
-//       default: 1,
-//       minimum: 0,
-//       maximum: 2,
-//       examples: [1],
-//     }),
-//     // customRules: Type.Optional(
-//     //   Type.Record(
-//     //     Type.String(),
-//     //     Type.Unknown({
-//     //       examples: [null],
-//     //     })
-//     //   )
-//     // ),
-//   },
-//   {
-//     examples: [
-//       {
-//         isPublic: true,
-//         gameMode: "standard",
-//       },
-//     ],
-//   }
-// );
-
-// const sessionOwnerBodySchema = {
-//   settings: sessionSettingsBodySchema,
-//   creatorId: userIdSchema,
-// };
-
-// export const transferOwnershipBodySchema = Type.Object({
-//   newOwnerId: userIdSchema,
-// });
-
-// export const sessionResource = createResource({
-//   type: "session",
-//   description: "Session management",
-//   ids: {
-//     ...userIdSchemas,
-//     ...sessionIdSchemas,
-//   },
-//   idsOrder: ["userId", "sessionId"],
-//   createId: "sessionId",
-//   authRoles: {
-//     userId: "owner",
-//     sessionId: "owner",
-//   },
-//   body: sessionOwnerBodySchema,
-//   methods: {
-//     transferOwnership: {
-//       description: "Transfer session ownership to another user",
-//       request: transferOwnershipBodySchema,
-//       response: {
-//         204: Type.Null(),
-//       },
-//     },
-//   } satisfies ResourceMethodSchemas,
-// });
-// export type SessionResource = typeof sessionResource;
-
-export const transferOwnershipBodySchema = Type.Object({
-  newOwnerId: userIdSchema,
-});
-
 export const sessionResource = createResource({
-  type: "session",
-  description: "Maps user to their active session",
+  type: sessionType,
   ids: {
     ...userIdSchemas,
     ...sessionIdSchemas,
@@ -127,15 +49,22 @@ export const sessionResource = createResource({
     userId: "owner",
     sessionId: undefined,
   },
-  body: {}, // No additional body needed as this is just a mapping
+  body: {
+    participants: Type.Record(
+      Type.String({ description: "User ID" }),
+      Type.String({ description: "User Name" })
+    ),
+  },
   methods: {
-    transferOwnership: {
-      description: "Transfer session ownership to another user",
-      request: transferOwnershipBodySchema,
-      response: {
-        204: Type.Null(),
-      },
+    join: {
+      request: Type.Object({}),
+      description: "Join the session",
+    },
+    leave: {
+      request: Type.Object({}),
+      description: "Leave the session",
     },
   } satisfies ResourceMethodSchemas,
 });
+
 export type SessionResource = typeof sessionResource;

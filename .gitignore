@@ -69,3 +69,7 @@ dist-ssr
 
 .env
 .env.local
+
+.nx
+
+**/tsconfig.tsbuildinfo

@@ -1,53 +1,43 @@
 import { Type } from "@sinclair/typebox";
-import { userIdSchema, userIdSchemas } from "./user.types.js";
 import { createResource } from "./lib/index.js";
 import { sessionIdSchemas } from "./session.types.js";
 
-export const sessionSettingsBodySchema = Type.Object(
-  {
-    isPublic: Type.Boolean({
-      default: true,
-      description: "Whether the session is publicly visible",
-      examples: [true],
-    }),
-    gameMode: Type.String({
-      enum: ["standard", "extended", "custom"],
-      default: "standard",
-      description: "Game mode configuration",
-      examples: ["standard"],
-    }),
-    gameSpeed: Type.Integer({
-      default: 1,
-      minimum: 0,
-      maximum: 2,
-      examples: [1],
-    }),
-  },
-  {
-    examples: [
-      {
-        isPublic: true,
-        gameMode: "standard",
-      },
-    ],
-  }
-);
+export const sessionSettingsBodySchema = {
+  gameMode: Type.String({
+    enum: ["standard", "extended", "custom"],
+    default: "standard",
+    description: "Game mode configuration",
+    examples: ["standard"],
+  }),
+  gameSpeed: Type.Integer({
+    default: 1,
+    minimum: 0,
+    maximum: 2,
+    examples: [1],
+  }),
+  maxPlayers: Type.Integer({
+    default: 4,
+    minimum: 2,
+    maximum: 8,
+    description: "Populated by backend based on mapType",
+  }),
+  mapType: Type.String({
+    enum: ["default_4", "default_6"],
+    default: "default_4",
+    description: "The map associated with a session",
+  }),
+};
 
 export const sessionSettingsResource = createResource({
   type: "sessionSettings",
   description: "Session configuration and settings",
   ids: {
-    ...userIdSchemas,
     ...sessionIdSchemas,
   },
-  idsOrder: ["userId", "sessionId"],
+  idsOrder: ["sessionId"],
   authRoles: {
-    userId: "owner",
     sessionId: "owner",
   },
-  body: {
-    settings: sessionSettingsBodySchema,
-    creatorId: userIdSchema,
-  },
+  body: sessionSettingsBodySchema,
 });
 export type SessionSettingsResource = typeof sessionSettingsResource;

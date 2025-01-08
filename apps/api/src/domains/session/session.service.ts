@@ -1,154 +1,109 @@
 import type { Redis } from "ioredis";
 import type { ServiceContext } from "../../libs/service-context.js";
 import {
-  ServiceContainer,
-  type ServiceParent,
-} from "../../../../../packages/backend-utils/src/service.js";
-import type { ResourceRoute } from "../../libs/resource/route.js";
-import { StateStore } from "../../libs/resource/state-store.js";
-import {
-  type ResourceBody,
   type ResourceIds,
   generateSessionId,
   sessionResource,
   type SessionResource,
-  type transferOwnershipBodySchema,
-  lobbyResource,
-  type LobbyResource,
-  type baseUserIdentificationSchema,
-  type UserId,
-} from "@colonist/api-contracts";
-import type { Static } from "@sinclair/typebox";
-import type { AuthIssuer } from "../../libs/auth/auth-issuer.js";
-import { User } from "../auth/user.entity.js";
-import {
-  sessionSettingsResource,
   type SessionSettingsResource,
-} from "../../libs/api-contracts/session-settings.types.js";
-import { assert } from "../../../../../packages/utils/src/assert.js";
+  sessionSettingsResource,
+  idsModifiedAtOfResourcce,
+} from "@colonist/api-contracts";
 import createHttpError from "http-errors";
-import { validate } from "../../../../../packages/backend-utils/src/validate.js";
+import type { ResourceRoute } from "../../libs/resource-route.js";
+import {
+  ServiceContainer,
+  StateReader,
+  StateStore,
+  validate,
+  type ServiceParent,
+} from "@colonist/backend-utils";
+import { getProfile } from "../../libs/auth/profile.js";
 
 export class SessionService extends ServiceContainer {
   readonly redis: Redis;
   readonly sessionStore: StateStore<SessionResource>;
-  readonly sessionSettingsStore: StateStore<SessionSettingsResource>;
-  readonly lobbyStore: StateStore<LobbyResource>;
-  readonly authIssuer: AuthIssuer;
+  readonly sessionSettingsReader: StateReader<SessionSettingsResource>;
 
-  constructor(
-    parent: ServiceParent,
-    context: ServiceContext & {
-      authIssuer: AuthIssuer;
-    }
-  ) {
+  constructor(parent: ServiceParent, context: ServiceContext) {
     super(parent, SessionService.name);
     this.redis = context.redis;
-    this.authIssuer = context.authIssuer;
     this.sessionStore = new StateStore(this, context, sessionResource);
-    this.sessionSettingsStore = new StateStore(
-      this,
+    this.sessionSettingsReader = new StateReader(
       context,
       sessionSettingsResource
     );
-    this.lobbyStore = new StateStore(this, context, lobbyResource);
-    const userRepository = context.entityManager.getRepository(User);
   }
 
-  sessionRoute(): ResourceRoute<SessionResource> {
+  route(): ResourceRoute<SessionResource> {
     return {
       resource: sessionResource,
-      post: (ids, body) => this.createSession(ids, body),
-      patch: (ids, body) => this.sessionStore.patchExisting(ids, body),
-      methods: {
-        transferOwnership: (ids, body) => this.transferOwnership(ids, body),
-      },
-    };
-  }
-
-  sessionSettingsRoute(): ResourceRoute<SessionSettingsResource> {
-    return {
-      resource: sessionSettingsResource,
-      tryGet: (ids) => this.sessionSettingsStore.get(ids),
-    };
-  }
-
-  sessionLobbyRoute(): ResourceRoute<LobbyResource> {
-    return {
-      resource: lobbyResource,
-      tryGet: (ids) => this.lobbyStore.get(ids),
-      methods: {
-        join: (ids, body) => this.joinSession(ids, body),
-        leave: (ids, body) => this.leaveSession(ids, body),
-      },
-    };
-  }
-
-  async createSession(
-    ids: ResourceIds<SessionResource>,
-    body: ResourceBody<SessionResource>
-  ) {
-    const sessionId = generateSessionId();
-    const [ownerData] = await Promise.all([
-      this.sessionStore.post(ids, body, () => Promise.resolve(sessionId)),
-      this.sessionSettingsStore.put({ ...ids, sessionId }, {}),
-      this.lobbyStore.put(
-        { ...ids, sessionId },
-        {
-          ...body,
-          ownerId: ids.userId,
-          participants: [
-            {
-              userId: ids.userId,
+      tryGet: (ids) => this.sessionStore.tryGet(ids),
+      post: (ids) =>
+        this.sessionStore.post(
+          ids,
+          {
+            participants: {
+              [ids.userId]: getProfile().name,
             },
-          ],
-        }
-      ),
-    ]);
-
-    return ownerData;
+          },
+          () => Promise.resolve(generateSessionId())
+        ),
+      methods: {
+        join: (ids) => this.joinSession(ids),
+        leave: (ids) => this.leaveSession(ids),
+      },
+    };
   }
 
-  async transferOwnership(
-    ids: ResourceIds<SessionResource>,
-    body: Static<typeof transferOwnershipBodySchema>
-  ) {
-    const { newOwnerId } = body;
-    const [_, newOwnerData, __] = await Promise.all([
-      this.sessionStore.delete(ids),
-      this.sessionStore.post(
-        { userId: newOwnerId, sessionId: ids.sessionId },
-        {
-          settings: (await this.sessionStore.get(ids)).settings,
-          creatorId: (await this.sessionStore.get(ids)).creatorId,
-        }
-      ),
-      this.lobbyStore.patchExisting(
-        { sessionId: ids.sessionId },
-        {
-          ownerId: newOwnerId,
-        }
-      ),
-    ]);
-
-    return newOwnerData;
-  }
-
-  async joinSession(ids: ResourceIds<LobbyResource>, body: UserId) {
-    const lobby = await this.lobbyStore.tryGet(ids);
-    validate(lobby !== undefined, "Lobby not found", createHttpError.NotFound);
+  async joinSession(ids: ResourceIds<SessionResource>) {
+    const session = await this.sessionStore.get(ids);
     validate(
-      lobby.participants !== undefined && lobby.participants?.length < 4,
-      "Lobby is full",
+      session.participants !== undefined,
+      "Session needs to have at least 1 participant",
       createHttpError.BadRequest
     );
-    return await this.lobbyStore.patchExisting(ids, {
-      participants: [...lobby.participants, { userId: body.userId }],
+    validate(
+      session.participants[ids.userId] !== undefined,
+      "Already part of session",
+      createHttpError.BadRequest
+    );
+
+    const participantsLength = Object.entries(session.participants).length;
+    const sessionSettings = await this.sessionSettingsReader.get(ids);
+    validate(
+      participantsLength < (sessionSettings.maxPlayers ?? 4), //
+      "Session is full",
+      createHttpError.BadRequest
+    );
+
+    return await this.sessionStore.patchExisting(ids, {
+      participants: {
+        ...session.participants,
+        [ids.userId]: getProfile().name,
+      },
     });
   }
 
-  async leaveSession(
-    ids: ResourceIds<LobbyResource>,
-    body: Static<typeof baseUserIdentificationSchema>
-  ) {}
+  async leaveSession(ids: ResourceIds<SessionResource>) {
+    const session = await this.sessionStore.get(ids);
+    validate(
+      session.participants !== undefined,
+      "Session needs to have at least 1 participant",
+      createHttpError.BadRequest
+    );
+    validate(
+      session.participants[ids.userId] !== undefined,
+      "Is not part of a session",
+      createHttpError.BadRequest
+    );
+    const participantsLength = Object.entries(session.participants).length;
+    if (participantsLength === 1) {
+      return await this.sessionStore.patchExisting(ids, { isDeleted: true });
+    }
+    delete session.participants[ids.userId];
+    return await this.sessionStore.patchExisting(ids, {
+      participants: session.participants,
+    });
+  }
 }

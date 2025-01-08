@@ -1,3 +1,3 @@
-export * from "./console-logger";
-export * from "./logger";
-export * from "./noop-logger";
+export * from "./console-logger.js";
+export * from "./logger.js";
+export * from "./noop-logger.js";

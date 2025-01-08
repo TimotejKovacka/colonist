@@ -8,83 +8,74 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Copy, Crown, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Logger } from "@/lib/logger";
-import { useUser } from "@/hooks/use-user";
-import { useLobbyStore } from "@/stores/lobby-store";
-import { useEffect } from "react";
+import { assert, type Logger } from "@colonist/utils";
+import { useEffect, useMemo } from "react";
+import { getUserIds } from "@/stores/user-store";
+import {
+  lobbyResource,
+  sessionResource,
+  type SessionId,
+} from "@colonist/api-contracts";
+import { isUserInLobby, useLobbyMutations } from "@/hooks/use-lobby";
+import { Spinner } from "@/components/ui/spinner";
+import { OwnerLobbySettings } from "@/components/lobby/OwnerLobbySettings";
+import { useResourceQuery } from "@/hooks/use-resource-query";
 
 const LobbyPage: React.FC<{ logger: Logger }> = ({ logger }) => {
-  const { sessionId } = useParams<{ sessionId: string }>();
+  const { sessionId } = useParams<{ sessionId: SessionId }>();
+  assert(sessionId !== undefined, "Missing sessionId");
+  const userIds = getUserIds();
+  const ids = useMemo(
+    () => ({
+      userId: userIds.userId,
+      sessionId,
+    }),
+    [userIds, sessionId]
+  );
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useUser();
-  const { currentLobby, isLoading, error, joinLobby } = useLobbyStore();
+  const {
+    data,
+    isLoading,
+    error: queryError,
+    isFetching,
+  } = useResourceQuery(sessionResource, ids);
+  const {
+    joinLobby,
+    isPending,
+    error: mutationError,
+  } = useLobbyMutations({ withNavigation: false });
 
   useEffect(() => {
-    if (!sessionId || !user || currentLobby !== null) return;
+    if (isLoading || isFetching || !data) {
+      return;
+    }
 
-    // Attempt to join lobby when component mounts
-    joinLobby(sessionId, user.id).catch((error) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to join lobby",
-        description: error.message,
-      });
-      navigate("/");
-    });
+    if (!isUserInLobby(ids.userId, data)) {
+      joinLobby(ids);
+    }
+  }, [isLoading, isFetching, data, ids, joinLobby]);
 
-    // Cleanup on unmount
-    return () => {
-      useLobbyStore.getState().setLobby(null);
-    };
-  }, [currentLobby, sessionId, user, joinLobby, navigate, toast]);
-
-  if (!user) {
-    return <div>Please log in to join the lobby</div>;
+  if (isLoading || isPending || isFetching || !data) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Spinner />
+        <span>Loading lobby...</span>
+      </div>
+    );
   }
 
-  if (isLoading) {
-    return <div>Loading lobby...</div>;
+  if (queryError || mutationError) {
+    return (
+      <div className="text-center text-red-500">
+        Error: {queryError?.message || mutationError?.message}
+      </div>
+    );
   }
 
-  if (error) {
-    return <div>Error: {error.message}</div>;
-  }
-
-  if (!currentLobby) {
-    return <div>Lobby not found</div>;
-  }
-
-  const isOwner = currentLobby.ownerId === user.id;
-
-  const copySessionId = async () => {
-    // if (lobbyStore.shareCode) {
-    //   await navigator.clipboard.writeText(lobbyStore.shareCode);
-    //   toast({
-    //     title: "Share code copied!",
-    //     description: "Send this code to your friends to join the game.",
-    //   });
-    // }
-  };
-
-  const handleMapChange = (value: string) => {
-    // Add map change logic here
-    console.log("Map changed to:", value);
-  };
-
-  const handleSpeedChange = (value: string) => {
-    // Add speed change logic here
-    console.log("Speed changed to:", value);
-  };
+  const isOwner = userIds.userId === data.userId;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -109,65 +100,52 @@ const LobbyPage: React.FC<{ logger: Logger }> = ({ logger }) => {
             </Button>
           </CardTitle>
           <CardDescription>
-            Players ({currentLobby.participants.length}/4)
+            Players ({data.participants.length}/4)
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           {/* Participants list */}
           <div className="space-y-4">
-            {currentLobby.participants.map((participant) => (
-              <div
-                key={participant.userId}
-                className="flex items-center gap-3 p-3 rounded-lg border"
-              >
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  {participant.userId === currentLobby.ownerId ? (
-                    <Crown className="h-5 w-5 text-yellow-500" />
-                  ) : (
-                    <Users className="h-5 w-5" />
-                  )}
+            {Object.entries(data.participants).map(([userId, name]) => {
+              const isCurrentUser = userId === userIds.userId;
+              const isParticipantOwner = userId === data.userId;
+
+              return (
+                <div
+                  key={userId}
+                  className={`flex items-center gap-3 p-3 rounded-lg border 
+                    ${isCurrentUser ? "bg-primary/5 border-primary" : ""}`}
+                >
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    {isParticipantOwner ? (
+                      <Crown className="h-5 w-5 text-yellow-500" />
+                    ) : (
+                      <Users className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">
+                        {name}
+                        {isCurrentUser && (
+                          <span className="ml-2 text-sm text-primary">
+                            (You)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      {isParticipantOwner ? "Host" : "Player"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">Player {participant.userId}</p>
-                  <p className="text-sm text-gray-500">
-                    {participant.userId === currentLobby.ownerId
-                      ? "Host"
-                      : "Player"}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Game settings (owner only) */}
-          {isOwner && (
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-4">Game Settings</h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Game Speed</label>
-                  <Select
-                    value={currentLobby.settings.gameSpeed.toString()}
-                    onValueChange={(value) => {
-                      useLobbyStore.getState().updateSettings({
-                        gameSpeed: parseInt(value) as 0 | 1 | 2,
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select game speed" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Slow</SelectItem>
-                      <SelectItem value="1">Normal</SelectItem>
-                      <SelectItem value="2">Fast</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          )}
+          {isOwner && <OwnerLobbySettings className="mt-6" ids={ids} />}
         </CardContent>
 
         <CardFooter className="flex justify-between">
@@ -182,7 +160,7 @@ const LobbyPage: React.FC<{ logger: Logger }> = ({ logger }) => {
 
           {isOwner && (
             <Button
-              disabled={currentLobby.participants.length < 2}
+              disabled={Object.entries(data.participants).length < 2}
               onClick={() => {
                 // Start game logic here
               }}

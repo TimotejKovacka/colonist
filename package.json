@@ -2,12 +2,23 @@
   "name": "colonist-monorepo",
   "private": true,
   "scripts": {
+    "clean": "rimraf packages/*/dist",
     "dev": "pnpm -r dev",
     "build": "pnpm -r build",
+    "rebuild": "pnpm clean && pnpm build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint"
   },
   "devDependencies": {
+    "@types/node": "^22.10.2",
+    "nx": "^20.3.0",
+    "rimraf": "^6.0.1",
     "typescript": "^5.7.2"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@fastify/request-context": "patches/@fastify__request-context.patch",
+      "@sinclair/typebox": "patches/@sinclair__typebox.patch"
+    }
   }
 }

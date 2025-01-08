@@ -1,6 +1,6 @@
 import fastifySensible from "@fastify/sensible";
+import fastifyRequestContext from "@fastify/request-context";
 import type { EnvConfig } from "./env.js";
-import { createLogger } from "./libs/logger.js";
 import type {
   RootService,
   ServiceParent,
@@ -16,12 +16,6 @@ import { debugTweaks } from "./utils/debug-tweaks.js";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import { systemRoutes } from "./domains/system/route.js";
 import { streamDomain } from "./domains/stream/route.js";
-import type { BaseResource } from "./libs/types/index.js";
-import {
-  registerResourceRoutes,
-  type ResourceRoute,
-} from "./libs/resource/route.js";
-import { MapService } from "./domains/map/map.service.js";
 import { ORMService } from "./utils/orm.client.js";
 import type { EntityManager } from "typeorm";
 import { authDomain } from "./domains/auth/route.js";
@@ -32,6 +26,14 @@ import { AuthVerifier } from "./libs/auth/auth-verifier.js";
 import { SessionService } from "./domains/session/session.service.js";
 import type { ServiceContext } from "./libs/service-context.js";
 import { AuthService } from "./domains/auth/auth-service.js";
+import type { BaseResource } from "@colonist/api-contracts";
+import {
+  registerResourceRoutes,
+  type ResourceRoute,
+} from "./libs/resource-route.js";
+import { createLogger, requestContextStorage } from "@colonist/backend-utils";
+import { SessionSettingsService } from "./domains/session/session-settings.service.js";
+import { LobbyService } from "./domains/session/lobby.service.js";
 
 export interface ApiServices {
   redis: Redis;
@@ -58,7 +60,7 @@ export function initServices(
     entities: [User],
   });
 
-  const authIssuer = new AuthIssuer(parent);
+  const authIssuer = new AuthIssuer(parent, { redis });
 
   const authVerifier = new AuthVerifier(parent);
 
@@ -96,6 +98,9 @@ export async function prepareServer(
     },
   });
   await server.register(fastifyCookie);
+  await server.register(fastifyRequestContext, {
+    asyncLocalStorage: requestContextStorage,
+  });
   // await server.register(fastifySession, {
   //   secret: envConfig.SESSION_SECRET_KEY,
   //   store: new RedisStore({
@@ -111,13 +116,14 @@ export async function prepareServer(
 
   // docs
   await server.register(fastifySwagger, {
-    openapi: {
-      openapi: "3.0.1",
+    swagger: {
       info: {
         title: "Settlers API",
         version: "0.0.1",
       },
-      tags: [],
+      schemes: ["http"],
+      consumes: ["application/json"],
+      produces: ["application/json"],
     },
   });
   server.addHook("onReady", async () => {
@@ -135,9 +141,6 @@ export async function prepareServer(
   }
 
   // Business logic plugins
-  // await server.register(authPlugin, {
-  //   authVerifier: services.authVerifier,
-  // });
   authPlugin(server, { authVerifier: services.authVerifier });
 
   return server;
@@ -169,15 +172,22 @@ export async function registerRoutes(
     entityManager,
   });
 
-  const sessionService = new SessionService(rootService, {
-    ...context,
-    authIssuer,
-  });
-  register(sessionService.sessionRoute());
-  register(sessionService.sessionSettingsRoute());
-  register(sessionService.sessionLobbyRoute());
-
-  register(new MapService(rootService, context).route());
+  {
+    // This should provide a ws info about participants
+    const service = new SessionService(rootService, context);
+    register(service.route());
+  }
+  {
+    // This should provide a ws info about settings
+    const service = new SessionSettingsService(rootService, context);
+    register(service.route());
+    service.createConsumers();
+  }
+  {
+    // Same as session settings
+    const service = new LobbyService(rootService, context);
+    register(service.route());
+  }
 
   await server.register(streamDomain);
 }

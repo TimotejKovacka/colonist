@@ -1,5 +1,13 @@
 import { create } from "zustand";
 import type { SessionSettingsState } from "./session-store";
+import {
+  resourceDtoToObject,
+  lobbyResource,
+  type LobbyResource,
+  type ResourceDto,
+  type ResourceObject,
+  type UserId,
+} from "@colonist/api-contracts";
 
 export type Participant = {
   userId: string;
@@ -14,12 +22,27 @@ export type LobbyState = {
 };
 
 interface LobbyStore {
-  currentLobby: LobbyState | null;
-  setLobby: (lobby: LobbyState | null) => void;
+  currentLobby: ResourceObject<LobbyResource> | null;
+  setLobby: (lobby: ResourceDto<LobbyResource> | null) => void;
+  // Getters
+  getCurrentLobby: () => ResourceObject<LobbyResource>;
 }
 
-export const useLobbyStore = create<LobbyStore>((set) => ({
+export const useLobbyStore = create<LobbyStore>((set, get) => ({
   currentLobby: null,
 
-  setLobby: (lobby) => set({ currentLobby: lobby }),
+  setLobby: (lobbyDto) =>
+    set({
+      currentLobby:
+        lobbyDto === null
+          ? lobbyDto
+          : resourceDtoToObject(lobbyResource, lobbyDto),
+    }),
+  getCurrentLobby: () => {
+    const lobby = get().currentLobby;
+    if (!lobby) {
+      throw new Error("Attempting to access lobby data before having them");
+    }
+    return lobby;
+  },
 }));

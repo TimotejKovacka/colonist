@@ -1,142 +1,109 @@
-import type {
-  PayloadFromMessageType,
-  WebSocketMessage,
-  WebSocketStatus,
-} from "@/types/websocket";
-import { ConsoleLogger, type Logger } from "./logger";
+import {
+  ConsoleLogger,
+  EventEmitter,
+  JsonSerde,
+  type Logger,
+} from "@colonist/utils";
 
-export class WebSocketClient {
-  private static instance: WebSocketClient;
+type WebSocketMessage = {
+  type: string;
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  payload: any;
+};
+
+export class WebSocketManager {
   private ws: WebSocket | null = null;
-  private status: WebSocketStatus = "disconnected";
+  private url: string;
   private reconnectAttempts = 0;
-  private reconnectTimer: NodeJS.Timeout | null = null;
-  private listeners: Map<
-    WebSocketMessage["type"],
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    Set<(payload: any) => void>
-  > = new Map();
-  private statusListeners: Set<(status: WebSocketStatus) => void> = new Set();
-  private logger: Logger = new ConsoleLogger({
-    module: "WebSocketClient",
-  });
+  private maxReconnectAttempts = 5;
+  private reconnectTimeout = 1000;
+  private serde = new JsonSerde<WebSocketMessage>();
+  private eventEmitter = new EventEmitter();
+  private logger: Logger;
 
-  private constructor() {
-    // Private constructor for singleton
+  constructor(url: string) {
+    this.url = url;
+    this.logger = new ConsoleLogger({ module: "WebSocket", meta: { url } });
   }
 
-  static getInstance(): WebSocketClient {
-    if (!WebSocketClient.instance) {
-      WebSocketClient.instance = new WebSocketClient();
-    }
-    return WebSocketClient.instance;
-  }
+  connect() {
+    try {
+      this.ws = new WebSocket(this.url);
 
-  connect(url: string) {
-    if (this.ws) {
-      this.logger.info("existing connection found, closing websocket");
-      this.ws.close();
-    }
+      this.ws.onopen = () => {
+        this.logger.info("Connected");
+        this.reconnectAttempts = 0;
+        this.eventEmitter.emit("connected");
+      };
 
-    this.logger.info(`opening connection to: ${url}`);
-    this.ws = new WebSocket(url);
-    this.updateStatus("connecting");
+      this.ws.onmessage = (event) => {
+        try {
+          const message = this.serde.decode(event.data);
+          this.eventEmitter.emit(message.type, message.payload);
+        } catch (error) {
+          this.logger.error("Failed to parse message", { ...event }, error);
+        }
+      };
 
-    this.ws.onopen = () => {
-      this.updateStatus("connected");
-      this.reconnectAttempts = 0;
-      this.startPingInterval();
-    };
+      this.ws.onclose = () => {
+        this.logger.info("Disconnected");
+        this.eventEmitter.emit("disconnected");
+        this.attemptReconnect();
+      };
 
-    this.ws.onclose = () => {
-      this.updateStatus("disconnected");
-      this.reconnect();
-    };
-
-    this.ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data) as WebSocketMessage;
-        this.logger.info("Received message:", { ...message });
-        this.notifyListeners(message);
-      } catch (error) {
-        this.logger.error("Failed to parse WebSocket message:", {}, error);
-      }
-    };
-  }
-
-  private reconnect() {
-    if (this.reconnectAttempts >= 5) return;
-
-    this.updateStatus("reconnecting");
-    this.reconnectAttempts++;
-
-    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 10000);
-    this.reconnectTimer = setTimeout(() => {
-      this.connect(this.ws?.url ?? "");
-    }, delay);
-  }
-
-  private updateStatus(newStatus: WebSocketStatus) {
-    this.logger.info(`status updating: ${newStatus}`);
-    this.status = newStatus;
-    for (const listener of this.statusListeners) {
-      listener(newStatus);
+      this.ws.onerror = (error) => {
+        this.logger.error("Error", {}, error);
+        this.eventEmitter.emit("error", error);
+      };
+    } catch (error) {
+      this.logger.info("Failed to connect", {}, error);
+      console.error("Failed to connect to WebSocket:", error);
+      this.attemptReconnect();
     }
   }
 
-  addMessageListener<T extends WebSocketMessage["type"]>(
-    type: T,
-    callback: (payload: PayloadFromMessageType<T>) => void
-  ) {
-    if (!this.listeners.has(type)) {
-      this.listeners.set(type, new Set());
-    }
-
-    this.listeners.get(type)!.add(callback);
-
-    // Return cleanup function
-    return () => {
-      this.listeners.get(type)?.delete(callback);
-    };
-  }
-
-  addStatusListener(callback: (status: WebSocketStatus) => void) {
-    this.statusListeners.add(callback);
-    return () => {
-      this.statusListeners.delete(callback);
-    };
-  }
-
-  private notifyListeners(message: WebSocketMessage) {
-    const listeners = this.listeners.get(message.type);
-    if (!listeners) {
+  private attemptReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.logger.error("Max reconnection attempts reached", {
+        reconnectAttempts: this.reconnectAttempts,
+        maxAttempts: this.maxReconnectAttempts,
+      });
+      this.eventEmitter.emit("maxReconnectAttemptsReached");
       return;
     }
 
-    for (const listener of listeners) {
-      listener(message.type);
-    }
+    this.reconnectAttempts++;
+    this.logger.info("Attempting to reconnect", {
+      reconnectAttempts: this.reconnectAttempts,
+      maxAttempts: this.maxReconnectAttempts,
+    });
+
+    setTimeout(() => {
+      this.connect();
+    }, this.reconnectTimeout * this.reconnectAttempts);
   }
 
-  send(message: WebSocketMessage) {
-    if (this.ws?.readyState !== WebSocket.OPEN) {
+  subscribe<T>(event: string, callback: (data: T) => void) {
+    this.eventEmitter.on(event, callback);
+    return () => this.eventEmitter.off(event, callback);
+  }
+
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  send(type: string, payload: any) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error("WebSocket is not connected");
     }
-    this.ws.send(JSON.stringify(message));
+
+    const message = this.serde.encode({ type, payload });
+    this.ws.send(message);
   }
 
-  private startPingInterval() {
-    this.send({
-      type: "ping",
-      payload: null,
-    });
-    setInterval(() => {
-      if (this.status === "connected") {
-        this.send({
-          type: "ping",
-          payload: null,
-        });
-      }
-    }, 30000); // Send ping every 30 seconds
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
   }
 }
+
+export const wsManager = new WebSocketManager(import.meta.env.VITE_STREAM_HOST);

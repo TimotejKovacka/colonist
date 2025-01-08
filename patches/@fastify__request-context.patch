@@ -1,0 +1,40 @@
+diff --git a/index.js b/index.js
+index eeb6485f70c1501b884bed52a2e8e46fc99eb3c3..52889cce915c4f854bc827baf2c6605991761164 100644
+--- a/index.js
++++ b/index.js
+@@ -6,7 +6,7 @@ const fp = require('fastify-plugin')
+ 
+ const asyncResourceSymbol = Symbol('asyncResource')
+ 
+-const asyncLocalStorage = new AsyncLocalStorage()
++let asyncLocalStorage;
+ 
+ const requestContext = {
+   get: (key) => {
+@@ -25,6 +25,7 @@ function fastifyRequestContext(fastify, opts, next) {
+   fastify.decorate('requestContext', requestContext)
+   fastify.decorateRequest('requestContext', { getter: () => requestContext })
+   fastify.decorateRequest(asyncResourceSymbol, null)
++  asyncLocalStorage = opts.asyncLocalStorage ?? new AsyncLocalStorage();
+   const hook = opts.hook || 'onRequest'
+   const hasDefaultStoreValuesFactory = typeof opts.defaultStoreValues === 'function'
+ 
+diff --git a/types/index.d.ts b/types/index.d.ts
+index d25c3995e8961021dfe83933f2515cde211f25e5..b7d1cd8279444d7725d41c25e44f15e15f05740a 100644
+--- a/types/index.d.ts
++++ b/types/index.d.ts
+@@ -1,5 +1,6 @@
+ import { AsyncResource } from 'async_hooks'
+ import { FastifyPluginCallback, FastifyRequest } from 'fastify'
++import { AsyncLocalStorage } from 'node::async_hooks'
+ 
+ type FastifyRequestContext =
+   FastifyPluginCallback<fastifyRequestContext.FastifyRequestContextOptions>
+@@ -50,6 +51,7 @@ declare namespace fastifyRequestContext {
+     defaultStoreValues?: RequestContextData | RequestContextDataFactory
+     hook?: Hook
+     createAsyncResource?: CreateAsyncResourceFactory
++    asyncLocalStorage?: AsyncLocalStorage
+   }
+ 
+   export const requestContext: RequestContext

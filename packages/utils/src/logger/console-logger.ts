@@ -1,10 +1,10 @@
-import type { Logger, LogLevel } from "./logger";
+import type { Logger, LogLevel } from "./logger.js";
 
 export class ConsoleLogger implements Logger {
   readonly module: string;
   readonly modulePath: string;
   protected level: LogLevel;
-  protected meta?: Record<string, unknown>;
+  protected meta: Record<string, unknown> | undefined;
 
   constructor({
     module = "root",
@@ -15,7 +15,7 @@ export class ConsoleLogger implements Logger {
     module?: string;
     parent?: Logger;
     level?: LogLevel;
-    meta?: Record<string, unknown>;
+    meta?: Record<string, unknown> | undefined;
   } = {}) {
     this.module = module;
     this.level = level;
@@ -43,7 +43,7 @@ export class ConsoleLogger implements Logger {
     this.log("trace", message, meta, error);
   }
 
-  child(module: string, meta?: Record<string, unknown>) {
+  child(module: string, meta?: Record<string, unknown> | undefined) {
     return new ConsoleLogger({ module, level: this.level, parent: this, meta });
   }
 

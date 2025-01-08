@@ -1,6 +1,6 @@
+import { fixNewlines } from "@colonist/utils";
 import { type Static, Type } from "@sinclair/typebox";
 import { envSchema } from "env-schema";
-import { fixNewlines } from "../../../packages/utils/src/fix-newlines.js";
 
 export function getEnvConfig(): EnvConfig {
   const env = envSchema<EnvConfig>({

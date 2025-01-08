@@ -1,44 +1,42 @@
 {
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "../../tsconfig.node.json",
 	"compilerOptions": {
-		"incremental": true,
-		"strict": true,
-		"rootDir": "src",
-		"outDir": "dist",
-		"allowJs": true,
-		"target": "ES2024",
-		"lib": ["es2024"],
+		// Node-specific settings
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
-		"sourceMap": true,
-		"skipLibCheck": true,
-		"skipDefaultLibCheck": true,
-		"noUnusedParameters": true,
-		"noUnusedLocals": true,
-		"noUncheckedIndexedAccess": true,
-		"noPropertyAccessFromIndexSignature": true,
-		"noImplicitOverride": true,
-		"noFallthroughCasesInSwitch": true,
-		"noErrorTruncation": true,
-		"esModuleInterop": true,
-		"resolveJsonModule": true,
-		"forceConsistentCasingInFileNames": true,
-		"allowUnreachableCode": false,
-		"declaration": true,
+		"target": "ES2022",
 		"experimentalDecorators": true,
 		"emitDecoratorMetadata": true,
-		"importHelpers": true,
-		"allowSyntheticDefaultImports": true,
-		"downlevelIteration": true,
-		"removeComments": true
+
+		// Output configuration
+		"rootDir": "./src",
+		"outDir": "./dist",
+
+		// Type generation
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+
+		"paths": {
+			"@colonist/backend-utils": ["../../packages/backend-utils/src"]
+		}
 	},
-	"include": [
-		"src/**/*.ts",
-		"../../packages/utils/src/fix-newlines.ts",
-		"../../packages/utils/src/assert.ts",
-		"../../packages/backend-utils/src/no-override.ts",
-		"../../packages/backend-utils/src/promised.ts",
-		"../../packages/backend-utils/src/service.ts",
-		"../../packages/backend-utils/src/validate.ts"
+	"include": ["src/**/*.ts", "src/**/*.d.ts"],
+	"exclude": [
+		"**/*.test.ts",
+		"**/*.spec.ts",
+		"**/__tests__/**",
+		"**/test/**",
+		"node_modules",
+		"dist"
 	],
-	"exclude": []
+	"references": [
+		{ "path": "../../packages/api-contracts" },
+		{ "path": "../../packages/utils" },
+		{ "path": "../../packages/backend-utils" }
+	],
+	"ts-node": {
+		"esm": true
+	}
 }

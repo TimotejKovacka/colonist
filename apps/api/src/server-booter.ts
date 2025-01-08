@@ -1,8 +1,5 @@
-import { assert } from "../../../packages/utils/src/assert.js";
-import {
-  ServiceNode,
-  type ServiceParent,
-} from "../../../packages/backend-utils/src/service.js";
+import { assert } from "@colonist/utils";
+import { ServiceNode, type ServiceParent } from "@colonist/backend-utils";
 import { debugTweaks } from "./utils/debug-tweaks.js";
 import type { FastifyTypeboxInstance } from "./utils/fastify.js";
 

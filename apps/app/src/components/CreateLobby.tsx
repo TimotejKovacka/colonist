@@ -1,19 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { useCreateLobby } from "@/hooks/use-create-lobby";
-import { useUser } from "@/hooks/use-user";
+import { useLobbyMutations } from "@/hooks/use-lobby";
 
 export const CreateLobby: React.FC = () => {
-  const { user } = useUser();
-  const { isPending, mutate } = useCreateLobby();
-
-  const handleClick = async () => {
-    if (!user) return;
-
-    mutate({ userId: user.id });
-  };
+  const { createLobby, isPending } = useLobbyMutations({});
 
   return (
-    <Button type="button" onClick={handleClick} disabled={isPending}>
+    <Button type="button" onClick={() => createLobby()} disabled={isPending}>
       {isPending ? "Creating..." : "Create"}
     </Button>
   );

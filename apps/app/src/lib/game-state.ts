@@ -1,7 +1,7 @@
 import { Board } from "./board";
 import { Point } from "./coordinate-system/point";
 import { Vertex } from "./coordinate-system/vertex";
-import { EventEmitter } from "./event-emitter";
+import { EventEmitter } from "../../../../packages/utils/src/event-emitter";
 import { StatefulEdge } from "./state/stateful-edge";
 import { StatefulVertex } from "./state/stateful-vertex";
 import {

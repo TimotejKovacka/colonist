@@ -1,31 +1,13 @@
 import type { FastifyRequest } from "fastify";
 import type { FastifyTypeboxInstance } from "../../utils/fastify.js";
 import type { AuthContext, AuthVerifier } from "./auth-verifier.js";
-import type { BaseResource } from "../types/resource.types.js";
-import { isObject } from "../isObject.js";
-import { validate } from "../../../../../packages/backend-utils/src/validate.js";
-import createHttpError from "http-errors";
+import type { BaseResource, ResourceId } from "@colonist/api-contracts";
+import { assert, isObject } from "@colonist/utils";
 import {
-  baseResourceType,
-  resourceIdSchema,
-  type ResourceId,
-} from "../types/resource-id.types.js";
-import type { TObject } from "@sinclair/typebox";
-import { assert } from "../../../../../packages/utils/src/assert.js";
-
-export const authIdSchema = resourceIdSchema<string, ResourceId, string>(
-  baseResourceType,
-  {}
-);
-export type AuthId = typeof authIdSchema;
-export type ResourceAuthContext<
-  Ids extends TObject<Record<string, AuthId>> = TObject<Record<string, AuthId>>
-> = {
-  [K in keyof Ids["properties"]]: {
-    id: ResourceId;
-    roles: Record<Ids["properties"][K]["role"], boolean>;
-  };
-};
+  assertResourceAuthContext,
+  requestContextStorage,
+  type RequestContextData,
+} from "@colonist/backend-utils";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -41,7 +23,7 @@ declare module "fastify" {
     authAnon: (request: unknown, reply: unknown) => unknown;
     authResource: (
       schema: BaseResource
-    ) => (request: unknown, reply: unknown) => unknown;
+    ) => (request: unknown) => Promise<unknown>;
   }
 }
 
@@ -79,49 +61,42 @@ export function authPlugin(
     const ids = isObject(request.params) ? request.params : undefined;
     const token = request.headers.authorization?.split(" ")[1] ?? "";
     const payload = await authVerifier.verifyAndDecode(token);
+    const contextStore = requestContextStorage.getStore();
+    assert(
+      contextStore !== undefined,
+      "Auth is running outside of request context"
+    );
     assert(
       payload.sub !== undefined,
       "Subject of authorization needs to be known"
     );
+    contextStore.profile = { name: payload.name };
 
-    const resourceAuth: ResourceAuthContext = {
-      userId: {
-        id: payload.sub,
-        roles: {
-          owner: true,
-        },
-      },
-      ...(payload.sessionId && {
-        sessionId: {
-          id: payload.sessionId,
+    const authContext = {
+      resourceAuth: {
+        userId: {
+          id: payload.sub,
           roles: {
             owner: true,
           },
         },
-      }),
-    };
+        ...(payload.sessionId && {
+          sessionId: {
+            id: payload.sessionId.resourceId,
+            roles: payload.sessionId.roles.reduce<Record<string, boolean>>(
+              (acc, curr) => {
+                acc[curr] = true;
+                return acc;
+              },
+              {}
+            ),
+          },
+        }),
+      },
+    } satisfies RequestContextData;
+    Object.assign(contextStore, authContext);
 
-    for (const [authIdKey, authRole] of Object.entries(schema.authRoles)) {
-      if (authRole === undefined) {
-        continue;
-      }
-      const authContext = resourceAuth[authIdKey];
-      validate(
-        authContext !== undefined,
-        `Not authorized to access ${authIdKey}`,
-        createHttpError.Forbidden
-      );
-      validate(
-        (ids as Record<string, ResourceId>)[authIdKey] === authContext.id,
-        `Not authorized to access ${authIdKey}`,
-        createHttpError.Forbidden
-      );
-      validate(
-        authContext.roles[authRole as string] === true,
-        `Not authorized to access ${authIdKey} ${authRole}`,
-        createHttpError.Forbidden
-      );
-    }
+    assertResourceAuthContext(schema, ids as Record<string, ResourceId>);
 
     request.ctx = {
       requireAuth: () => ({ ...payload }),

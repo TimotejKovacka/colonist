@@ -1,11 +1,21 @@
+import { JsonSerde, type Logger } from "@colonist/utils";
 import type { FastifyTypeboxInstance } from "../../utils/fastify.js";
+import type { MessageRouter } from "../../libs/ws/message-router.js";
+import type {
+  WebSocketMessage,
+  WebSocketRouteContext,
+} from "../../libs/ws/ws-resource-route.js";
 
-interface WebSocketMessage {
-  type: string;
-  payload: unknown;
+export interface StreamDomainOptions {
+  logger: Logger;
+  router: MessageRouter;
 }
 
-export async function streamDomain(fastify: FastifyTypeboxInstance) {
+export async function streamDomain(
+  fastify: FastifyTypeboxInstance,
+  { logger }: StreamDomainOptions
+) {
+  const jsonSerde = new JsonSerde<WebSocketMessage>();
   fastify.get(
     "/stream",
     {
@@ -16,42 +26,28 @@ export async function streamDomain(fastify: FastifyTypeboxInstance) {
       },
     },
     async (socket, req) => {
+      const context: WebSocketRouteContext = {
+        request: req,
+        send: (message) => socket.send(jsonSerde.encode(message)),
+      };
       req.log.info("New connection established");
       socket.on("message", (rawMessage) => {
         try {
-          // Parse the Buffer into a string and then into JSON
           const messageString = rawMessage.toString("utf-8");
-          const message = JSON.parse(messageString) as WebSocketMessage;
-          req.log.info({ message }, "Received message");
-
-          // Handle different message types
-          switch (message.type) {
-            case "ping":
-              socket.send(
-                JSON.stringify({
-                  type: "pong",
-                  payload: null,
-                })
-              );
-              break;
-            default:
-              req.log.info({ type: message.type }, "Unhandled message type");
-          }
-        } catch (error) {
-          req.log.error(error, "Error processing message");
+          const message = jsonSerde.decode(messageString);
+          router.getMessageRouter().handleMessage(message, context);
+        } catch (err) {
+          logger.error("Failed to process message", { rawMessage }, err);
         }
       });
       socket.on("open", () => req.log.info("Connection open"));
       socket.on("close", () => {
-        req.log.info("Connection closed");
+        logger.info("Connection closed");
       });
 
       socket.on("error", (error) => {
-        req.log.error(error, "WebSocket error");
+        logger.error("WebSocket error", {}, error);
       });
-      socket.on("message", (msg) =>
-        req.log.info(JSON.stringify(msg), "new message")
-      );
       socket.on("upgrade", (request) =>
         req.log.info(request, "Connection upgrade")
       );

@@ -1,22 +1,43 @@
 import { importPKCS8, SignJWT, type KeyLike } from "jose";
 import {
+  type NoOverride,
   ServiceContainer,
+  type ServiceContext,
   type ServiceParent,
-} from "../../../../../packages/backend-utils/src/service.js";
-import type { NoOverride } from "../../../../../packages/backend-utils/src/no-override.js";
-import { assert } from "../../../../../packages/utils/src/assert.js";
+  StateReader,
+  validate,
+} from "@colonist/backend-utils";
+import { assert } from "@colonist/utils";
 import { readFileSync } from "node:fs";
+import {
+  sessionResource,
+  type ResourceIds,
+  type SessionAuthRole,
+  type SessionId,
+  type SessionResource,
+  type UserId,
+} from "@colonist/api-contracts";
+import createHttpError from "http-errors";
+
+export type Claim = {
+  resourceId: string;
+  roles: string[];
+};
 
 export type TokenData = {
   id: string;
   name: string;
-} & Record<`${string}Id`, string>;
+  sessionId?: string;
+};
 
 export class AuthIssuer extends ServiceContainer {
   readonly hashingAlgorithm = "RS256" as const;
   private signingKey: KeyLike | null = null;
-  constructor(parent: ServiceParent) {
+  private sessionReader: StateReader<SessionResource>;
+
+  constructor(parent: ServiceParent, context: ServiceContext) {
     super(parent, AuthIssuer.name);
+    this.sessionReader = new StateReader(context, sessionResource);
   }
 
   async issueToken(data: TokenData) {
@@ -25,13 +46,19 @@ export class AuthIssuer extends ServiceContainer {
       name: data.name,
     };
 
-    for (const [key, value] of Object.entries(data)) {
-      if (key.endsWith("Id") && key !== "id") {
-        payload[key] = value;
-      }
+    if (data.sessionId) {
+      const key = "sessionId";
+      payload[key] = await this.issueSessionClaim({
+        userId: data.id as UserId,
+        sessionId: data.sessionId as SessionId,
+      });
+      this.logger.info("Issued session claim", {
+        sessionClaim: payload[key],
+      });
     }
 
     try {
+      this.logger.info("Signing token", payload);
       const jwt = await new SignJWT(payload)
         .setProtectedHeader({ alg: this.hashingAlgorithm })
         .setIssuedAt()
@@ -72,5 +99,29 @@ export class AuthIssuer extends ServiceContainer {
       this.logger.error("Failed to load private key:", {}, error);
       throw error;
     }
+  }
+
+  private async issueSessionClaim(
+    ids: ResourceIds<SessionResource>
+  ): Promise<Claim> {
+    const session = await this.sessionReader.tryGet(ids);
+    validate(
+      session !== undefined,
+      "Session not found",
+      createHttpError.NotFound
+    );
+    const roles: Exclude<SessionAuthRole, undefined>[] = [];
+    if (session.userId === ids.userId) {
+      roles.push("owner");
+    }
+    const participants = Object.entries(session?.participants || {});
+    if (participants.some(([id, _]) => id === ids.userId)) {
+      roles.push("participant");
+    }
+    validate(roles.length > 0, undefined, createHttpError.Unauthorized);
+    return {
+      resourceId: session.sessionId,
+      roles,
+    };
   }
 }

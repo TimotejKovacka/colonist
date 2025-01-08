@@ -1,7 +1,7 @@
 import { type Static, Type } from "@sinclair/typebox";
-import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { typeboxResolver } from "@hookform/resolvers/typebox";
+import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { useForm } from "react-hook-form";
 import {
   Form,
@@ -19,26 +19,26 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { useLobby } from "@/hooks/use-lobby";
+import { useLobbyMutations } from "@/hooks/use-lobby";
+import type { SessionId } from "@colonist/api-contracts";
 
 const schema = Type.Object({
   sessionId: Type.String({
     minLength: 6,
     maxLength: 6,
     pattern: REGEXP_ONLY_DIGITS_AND_CHARS,
+    default: "",
   }),
 });
-const typecheck = TypeCompiler.Compile(schema);
+
 type FormValues = Static<typeof schema>;
+// const compiledSchema = TypeCompiler.Compile(schema);
 
 export const JoinLobbyForm: React.FC = () => {
-  const navigate = useNavigate();
-  const { joinLobby } = useLobby();
-  const { toast } = useToast();
+  const { joinLobby, isPending } = useLobbyMutations({ withNavigation: true });
+
   const form = useForm<FormValues>({
-    resolver: typeboxResolver(typecheck),
+    resolver: typeboxResolver(schema),
     defaultValues: {
       sessionId: "",
     },
@@ -46,13 +46,9 @@ export const JoinLobbyForm: React.FC = () => {
 
   const onSubmit = async (data: FormValues) => {
     try {
-      joinLobby(data);
-      // await lobbyStore.joinLobby(data.sessionId);
-      // You might want to navigate to the lobby page here
-      toast({
-        title: "Successfully joined lobby",
+      await joinLobby({
+        sessionId: data.sessionId as SessionId,
       });
-      navigate(`/lobby/${data.sessionId}`);
     } catch (error) {
       // Handle error (maybe show a toast notification)
       form.setError("sessionId", {
@@ -98,7 +94,7 @@ export const JoinLobbyForm: React.FC = () => {
           )}
         />
 
-        <Button type="submit">Join</Button>
+        <Button type="submit">{isPending ? "Joining..." : "Join"}</Button>
       </form>
     </Form>
   );

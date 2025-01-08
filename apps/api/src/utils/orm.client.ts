@@ -1,14 +1,11 @@
-import {
-  ServiceNode,
-  type ServiceParent,
-} from "../../../../packages/backend-utils/src/service.js";
+import { ServiceNode, type ServiceParent } from "@colonist/backend-utils";
 import {
   DataSource,
   type EntitySchema,
   type MixedList,
   type EntityManager,
 } from "typeorm";
-import { assert } from "../../../../packages/utils/src/assert.js";
+import { assert } from "@colonist/utils";
 
 type TypeORMConfig = {
   host: string;
@@ -67,7 +64,7 @@ export class ORMService extends ServiceNode {
     return this.dataSource.showMigrations();
   }
 
-  protected override async nodeStart(): Promise<void> {
+  protected async nodeStart(): Promise<void> {
     await this.dataSource.initialize();
     this.logger.info("ORM connected to database");
 
@@ -79,13 +76,13 @@ export class ORMService extends ServiceNode {
     }
   }
 
-  protected override async nodeStop(): Promise<void> {
+  protected async nodeStop(): Promise<void> {
     if (this.dataSource.isInitialized) {
       await this.dataSource.destroy();
     }
   }
 
-  protected override nodeAssertAlive(): void {
+  protected nodeAssertAlive(): void {
     assert(this.dataSource.isInitialized, "TypeORM DataSource not initialized");
   }
 }

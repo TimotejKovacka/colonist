@@ -1,13 +1,37 @@
 {
-	"extends": "../../tsconfig.base.json",
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "../../tsconfig.node.json",
 	"compilerOptions": {
-		"module": "NodeNext"
+		"composite": true,
+
+		// Node-specific settings
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"target": "ES2022",
+
+		// Output configuration
+		"rootDir": "./src",
+		"outDir": "./dist",
+
+		// Type generation
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true
 	},
-	"files": [],
-	"include": [],
+	"include": ["src/**/*.ts", "src/**/*.js"], // Make sure all needed files are included
+	"exclude": [
+		"**/*.test.ts",
+		"**/*.spec.ts",
+		"**/__tests__/**",
+		"**/test/**",
+		"node_modules",
+		"dist"
+	],
 	"references": [
-		{
-			"path": "./tsconfig.lib.json"
-		}
-	]
+		{ "path": "../../packages/api-contracts" },
+		{ "path": "../../packages/utils" }
+	],
+	"ts-node": {
+		"esm": true
+	}
 }

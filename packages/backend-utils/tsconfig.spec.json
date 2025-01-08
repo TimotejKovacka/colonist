@@ -1,0 +1,21 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "../../tsconfig.test.json",
+	"compilerOptions": {
+		// Test-specific settings
+		"rootDir": ".",
+		"noEmit": true,
+		"types": ["jest", "node"]
+	},
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.tsx",
+		"test/**/*.ts",
+		"src/**/*.test.ts",
+		"src/**/*.spec.ts",
+		"__tests__/**/*.ts"
+	],
+	"references": [
+		{ "path": "./tsconfig.json" } // Reference the main build config
+	]
+}
