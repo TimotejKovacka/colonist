@@ -6,8 +6,8 @@ import {
   type ServiceParent,
   StateReader,
   validate,
-} from "@colonist/backend-utils";
-import { assert } from "@colonist/utils";
+} from "@pilgrim/backend-utils";
+import { assert } from "@pilgrim/utils";
 import { readFileSync } from "node:fs";
 import {
   sessionResource,
@@ -16,7 +16,7 @@ import {
   type SessionId,
   type SessionResource,
   type UserId,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 import createHttpError from "http-errors";
 
 export type Claim = {
@@ -48,8 +48,7 @@ export class AuthIssuer extends ServiceContainer {
 
     if (data.sessionId) {
       const key = "sessionId";
-      payload[key] = await this.issueSessionClaim({
-        userId: data.id as UserId,
+      payload[key] = await this.issueSessionClaim(data.id as UserId, {
         sessionId: data.sessionId as SessionId,
       });
       this.logger.info("Issued session claim", {
@@ -102,6 +101,7 @@ export class AuthIssuer extends ServiceContainer {
   }
 
   private async issueSessionClaim(
+    userId: UserId,
     ids: ResourceIds<SessionResource>
   ): Promise<Claim> {
     const session = await this.sessionReader.tryGet(ids);
@@ -111,11 +111,11 @@ export class AuthIssuer extends ServiceContainer {
       createHttpError.NotFound
     );
     const roles: Exclude<SessionAuthRole, undefined>[] = [];
-    if (session.userId === ids.userId) {
+    if (session.owner === userId) {
       roles.push("owner");
     }
     const participants = Object.entries(session?.participants || {});
-    if (participants.some(([id, _]) => id === ids.userId)) {
+    if (participants.some(([id, _]) => id === userId)) {
       roles.push("participant");
     }
     validate(roles.length > 0, undefined, createHttpError.Unauthorized);

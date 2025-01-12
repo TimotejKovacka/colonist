@@ -1,4 +1,4 @@
-import type { baseResource, ResourceIds } from "@colonist/api-contracts";
+import type { baseResource, ResourceIds } from "@pilgrim/api-contracts";
 
 declare const redisTagSymbol: "redisTag";
 export type RedisTag = string & { [redisTagSymbol]: never };

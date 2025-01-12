@@ -1,4 +1,4 @@
-import type { UserId } from "@colonist/api-contracts";
+import type { UserId } from "@pilgrim/api-contracts";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 

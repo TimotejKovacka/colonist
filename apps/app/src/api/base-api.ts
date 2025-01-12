@@ -19,4 +19,6 @@ export const api = withAuthMiddleware(
   })
 );
 
+export const BASE_URL = `${window.location.origin}${api.defaults.baseURL}`;
+
 console.log("Axios config:", api.defaults.baseURL);

@@ -5,7 +5,7 @@ import {
   createResource,
   type ResourceMethodSchemas,
 } from "./lib/index.js";
-import { userIdSchemas } from "./user.types.js";
+import { userIdSchema } from "./user.types.js";
 
 export const sessionType = "session" as const;
 export type SessionAuthRole = "owner" | "participant" | undefined;
@@ -40,26 +40,28 @@ export function generateSessionId(): SessionId {
 export const sessionResource = createResource({
   type: sessionType,
   ids: {
-    ...userIdSchemas,
     ...sessionIdSchemas,
   },
-  idsOrder: ["userId", "sessionId"],
+  idsOrder: ["sessionId"],
   createId: "sessionId",
   authRoles: {
-    userId: "owner",
     sessionId: undefined,
   },
   body: {
+    owner: userIdSchema,
     participants: Type.Record(
       Type.String({ description: "User ID" }),
       Type.String({ description: "User Name" })
     ),
   },
+  query: Type.Object({
+    autoJoin: Type.Boolean({ default: false }),
+  }),
   methods: {
-    join: {
-      request: Type.Object({}),
-      description: "Join the session",
-    },
+    // join: {
+    //   request: Type.Object({}),
+    //   description: "Join the session",
+    // },
     leave: {
       request: Type.Object({}),
       description: "Leave the session",

@@ -4,7 +4,8 @@ import {
   type BaseResource,
   type ResourceId,
   type ResourceIds,
-} from "@colonist/api-contracts";
+  type UserId,
+} from "@pilgrim/api-contracts";
 import type { TObject } from "@sinclair/typebox";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { validate } from "./validate.js";
@@ -15,6 +16,7 @@ import createHttpError from "http-errors";
  */
 export type RequestContextData = {
   profile?: {
+    id: UserId;
     name: string;
   };
   resourceAuth: ResourceAuthContext;

@@ -10,15 +10,10 @@ import {
 } from "@/components/ui/card";
 import { Copy, Crown, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { assert, type Logger } from "@colonist/utils";
+import { assert, type Logger } from "@pilgrim/utils";
 import { useEffect, useMemo } from "react";
 import { getUserIds } from "@/stores/user-store";
-import {
-  lobbyResource,
-  sessionResource,
-  type SessionId,
-} from "@colonist/api-contracts";
-import { isUserInLobby, useLobbyMutations } from "@/hooks/use-lobby";
+import { sessionResource, type SessionId } from "@pilgrim/api-contracts";
 import { Spinner } from "@/components/ui/spinner";
 import { OwnerLobbySettings } from "@/components/lobby/OwnerLobbySettings";
 import { useResourceQuery } from "@/hooks/use-resource-query";
@@ -36,29 +31,32 @@ const LobbyPage: React.FC<{ logger: Logger }> = ({ logger }) => {
   );
   const navigate = useNavigate();
   const { toast } = useToast();
-  const {
-    data,
-    isLoading,
-    error: queryError,
-    isFetching,
-  } = useResourceQuery(sessionResource, ids);
-  const {
-    joinLobby,
-    isPending,
-    error: mutationError,
-  } = useLobbyMutations({ withNavigation: false });
+  const { data, isLoading, error, isFetching, isPlaceholderData } =
+    useResourceQuery(sessionResource, ids, {
+      logger,
+      query: {
+        autoJoin: true,
+      },
+      retry: 0,
+    });
 
-  useEffect(() => {
-    if (isLoading || isFetching || !data) {
-      return;
-    }
+  // useEffect(() => {
+  //   return () => {
+  //     if (data && !isPlaceholderData) {
+  //       // Send leave patch when component unmounts
+  //       sendPatch({
+  //         ...data,
+  //         participants: Object.fromEntries(
+  //           Object.entries(data?.participants ?? {}).filter(
+  //             ([userId]) => userId !== userIds.userId
+  //           )
+  //         ),
+  //       });
+  //     }
+  //   };
+  // }, [isPlaceholderData, data, sendPatch, userIds.userId]);
 
-    if (!isUserInLobby(ids.userId, data)) {
-      joinLobby(ids);
-    }
-  }, [isLoading, isFetching, data, ids, joinLobby]);
-
-  if (isLoading || isPending || isFetching || !data) {
+  if (isLoading || isFetching || !data) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <Spinner />
@@ -67,15 +65,21 @@ const LobbyPage: React.FC<{ logger: Logger }> = ({ logger }) => {
     );
   }
 
-  if (queryError || mutationError) {
+  if (error) {
+    if ("response" in error && error.response?.status === 400) {
+      if (error.response.data.message === "Session is full") {
+        navigate("/");
+        return null;
+      }
+    }
     return (
       <div className="text-center text-red-500">
-        Error: {queryError?.message || mutationError?.message}
+        Error: {error instanceof Error ? error.message : "Unknown error"}
       </div>
     );
   }
 
-  const isOwner = userIds.userId === data.userId;
+  const isOwner = userIds.userId === data.owner;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -100,7 +104,7 @@ const LobbyPage: React.FC<{ logger: Logger }> = ({ logger }) => {
             </Button>
           </CardTitle>
           <CardDescription>
-            Players ({data.participants.length}/4)
+            Players ({Object.entries(data.participants).length}/4)
           </CardDescription>
         </CardHeader>
 
@@ -109,7 +113,7 @@ const LobbyPage: React.FC<{ logger: Logger }> = ({ logger }) => {
           <div className="space-y-4">
             {Object.entries(data.participants).map(([userId, name]) => {
               const isCurrentUser = userId === userIds.userId;
-              const isParticipantOwner = userId === data.userId;
+              const isParticipantOwner = userId === data.owner;
 
               return (
                 <div

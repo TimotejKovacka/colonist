@@ -36,7 +36,7 @@ export const sessionSettingsResource = createResource({
   },
   idsOrder: ["sessionId"],
   authRoles: {
-    sessionId: "owner",
+    sessionId: undefined, // TODO: should be owner
   },
   body: sessionSettingsBodySchema,
 });

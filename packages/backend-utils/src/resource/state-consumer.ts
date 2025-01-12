@@ -2,7 +2,7 @@ import type {
   BaseResource,
   ResourceDto,
   ResourceRef,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 import {
   RedisStreamConsumer,
   type StreamProcessor,

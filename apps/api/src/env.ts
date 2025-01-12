@@ -1,4 +1,4 @@
-import { fixNewlines } from "@colonist/utils";
+import { fixNewlines } from "@pilgrim/utils";
 import { type Static, Type } from "@sinclair/typebox";
 import { envSchema } from "env-schema";
 
@@ -32,6 +32,8 @@ const envConfigSchema = Type.Object({
   NODE_ENV: Type.Enum(NodeEnv, { default: NodeEnv.Development }),
   HOST: Type.String({ default: "localhost" }),
   PORT: Type.Number({ default: 3000 }),
+  STREAM_HOST: Type.String({ default: "localhost" }),
+  STREAM_PORT: Type.Number({ default: 3001 }),
   REDIS_PORT: Type.Number({ default: 6379 }),
   REDIS_HOST: Type.String({ default: "0.0.0.0" }),
   SESSION_SECRET_KEY: Type.String(),

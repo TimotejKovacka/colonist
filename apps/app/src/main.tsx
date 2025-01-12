@@ -9,10 +9,13 @@ import { createBrowserRouter } from "react-router-dom";
 import Home from "@/pages/Home";
 import Lobby from "@/pages/Lobby";
 import { RootLayout } from "@/components/RootLayout";
-import { ConsoleLogger, type Logger } from "@colonist/utils";
+import { ConsoleLogger, type Logger } from "@pilgrim/utils";
 import { AuthProvider } from "./components/AuthProvider.tsx";
 import { ToastProvider } from "./components/ToastProvider.tsx";
 import { WebSocketProvider } from "./contexts/ws-context.tsx";
+import App from "./App.tsx";
+import { GameFacade } from "./lib/game-facade.ts";
+import { IoProvider } from "./lib/websocket/io.provider.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,9 +61,11 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ToastProvider>
-          <WebSocketProvider>
+          {/* <WebSocketProvider url=""> */}
+          <IoProvider>
             <RouterProvider router={router} />
-          </WebSocketProvider>
+          </IoProvider>
+          {/* </WebSocketProvider> */}
         </ToastProvider>
         <Toaster />
         <ReactQueryDevtools />

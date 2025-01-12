@@ -1,6 +1,6 @@
 import { CreateLobby } from "@/components/CreateLobby";
 import { JoinLobbyForm } from "@/components/JoinLobbyForm";
-import type { Logger } from "@colonist/utils";
+import type { Logger } from "@pilgrim/utils";
 
 const HomePage: React.FC<{ logger: Logger }> = () => (
   <div className="container mx-auto px-4 py-8">

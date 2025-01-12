@@ -11,16 +11,16 @@
     "noMarkdown": ["!{projectRoot}/**/*.md"]
   },
   "targetDefaults": {
-    "build": {
-      "inputs": ["noMarkdown", "^noMarkdown"],
-      "dependsOn": ["^build"]
-    },
-    "rebuild": {
-      "inputs": ["noMarkdown", "^noMarkdown"],
-      "dependsOn": ["^rebuild"]
-    },
-    "dev": {
-      "dependsOn": ["^build"]
-    }
+    // "build": {
+    //   "inputs": ["noMarkdown", "^noMarkdown"],
+    //   "dependsOn": ["^build"]
+    // },
+    // "rebuild": {
+    //   "inputs": ["noMarkdown", "^noMarkdown"],
+    //   "dependsOn": ["^rebuild"]
+    // },
+    // "dev": {
+    //   "dependsOn": ["^build"]
+    // }
   }
 }

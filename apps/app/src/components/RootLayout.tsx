@@ -1,6 +1,6 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
-import type { Logger } from "@colonist/utils";
+import type { Logger } from "@pilgrim/utils";
 import { getUserState } from "@/stores/user-store";
 
 export const RootLayout: React.FC<{ logger: Logger }> = () => {

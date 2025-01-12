@@ -1,40 +1,54 @@
-import { useEffect, createContext, useContext, useState } from "react";
-import { wsManager } from "@/lib/ws";
+import {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
+import { WebSocketClient } from "@/lib/websocket/websocket.client";
+import { ConsoleLogger } from "@pilgrim/utils";
 
 type WebSocketContextType = {
   isConnected: boolean;
-  connect: () => void;
-  disconnect: () => void;
+  client: WebSocketClient;
 };
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
+const logger = new ConsoleLogger({ module: "WebSocketContext" });
 
-export function WebSocketProvider({ children }: { children: React.ReactNode }) {
-  const [isConnected, setIsConnected] = useState(false);
+export function WebSocketProvider({
+  children,
+  url,
+}: {
+  children: React.ReactNode;
+  url: string;
+}) {
+  const client = useMemo(() => new WebSocketClient(url), [url]);
+  const [isConnected, setIsConnected] = useState(() => client.isConnected);
 
-  useEffect(() => {
-    const handleConnect = () => setIsConnected(true);
-    const handleDisconnect = () => setIsConnected(false);
-
-    wsManager.subscribe("connected", handleConnect);
-    wsManager.subscribe("disconnected", handleDisconnect);
-
-    // Initial connection
-    wsManager.connect();
-
-    return () => {
-      wsManager.disconnect();
-    };
+  const handleConnect = useCallback(() => {
+    logger.debug("Socket connected");
+    setIsConnected(true);
   }, []);
 
-  const value = {
-    isConnected,
-    connect: () => wsManager.connect(),
-    disconnect: () => wsManager.disconnect(),
-  };
+  const handleDisconnect = useCallback(() => {
+    logger.debug("Socket disconnected");
+    setIsConnected(false);
+  }, []);
+
+  useMemo(() => {
+    logger.debug("Setting up connection handlers");
+    client.on("connected", handleConnect);
+    client.on("disconnected", handleDisconnect);
+  }, [client, handleConnect, handleDisconnect]);
+
+  const contextValue = useMemo(
+    () => ({ client, isConnected }),
+    [client, isConnected]
+  );
 
   return (
-    <WebSocketContext.Provider value={value}>
+    <WebSocketContext.Provider value={contextValue}>
       {children}
     </WebSocketContext.Provider>
   );

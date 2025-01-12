@@ -5,17 +5,15 @@ import type {
   RootService,
   ServiceParent,
 } from "../../../packages/backend-utils/src/service.js";
-import { type FastifyTypeboxInstance, initFastify } from "./utils/fastify.js";
+import type { FastifyTypeboxInstance } from "./utils/fastify.js";
 import { RedisService } from "./utils/redis.client.js";
 import fastifyCors from "@fastify/cors";
 import fastifyCookie from "@fastify/cookie";
 import type { Redis } from "ioredis";
-import fastifyWebsocket from "@fastify/websocket";
 import fastifySwagger from "@fastify/swagger";
-import { debugTweaks } from "./utils/debug-tweaks.js";
+import { debugTweaks } from "../../../packages/backend-utils/src/debug-tweaks.js";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import { systemRoutes } from "./domains/system/route.js";
-import { streamDomain } from "./domains/stream/route.js";
 import { ORMService } from "./utils/orm.client.js";
 import type { EntityManager } from "typeorm";
 import { authDomain } from "./domains/auth/route.js";
@@ -25,21 +23,21 @@ import { AuthIssuer } from "./libs/auth/auth-issuer.js";
 import { AuthVerifier } from "./libs/auth/auth-verifier.js";
 import { SessionService } from "./domains/session/session.service.js";
 import type { ServiceContext } from "./libs/service-context.js";
-import { AuthService } from "./domains/auth/auth-service.js";
-import type { BaseResource } from "@colonist/api-contracts";
+import { UserService } from "./domains/auth/user-service.js";
+import type { BaseResource } from "@pilgrim/api-contracts";
 import {
   registerResourceRoutes,
   type ResourceRoute,
 } from "./libs/resource-route.js";
-import { createLogger, requestContextStorage } from "@colonist/backend-utils";
+import { requestContextStorage, type Publisher } from "@pilgrim/backend-utils";
 import { SessionSettingsService } from "./domains/session/session-settings.service.js";
 import { LobbyService } from "./domains/session/lobby.service.js";
+import { WebSocketServer, type IoServer } from "./utils/websocket.server.js";
+import type { ResourceHandler } from "./libs/resource-router.js";
 
 export interface ApiServices {
   redis: Redis;
   entityManager: EntityManager;
-  authIssuer: AuthIssuer;
-  authVerifier: AuthVerifier;
 }
 
 export function initServices(
@@ -60,59 +58,44 @@ export function initServices(
     entities: [User],
   });
 
-  const authIssuer = new AuthIssuer(parent, { redis });
+  return {
+    redis,
+    entityManager,
+  };
+}
+
+export interface AuthServices {
+  authIssuer: AuthIssuer;
+  authVerifier: AuthVerifier;
+}
+
+export function initAuthServices(
+  parent: ServiceParent,
+  context: ServiceContext
+) {
+  const authIssuer = new AuthIssuer(parent, context);
 
   const authVerifier = new AuthVerifier(parent);
 
   return {
     authIssuer,
     authVerifier,
-    redis,
-    entityManager,
   };
 }
 
-export async function prepareServer(
-  services: ApiServices,
-  envConfig: EnvConfig
+export async function prepareHttpServer(
+  server: FastifyTypeboxInstance,
+  authVerifier: AuthVerifier
 ) {
-  const server = initFastify({
-    logger: createLogger("fastify").pinoLogger,
-    ajv: {
-      customOptions: {
-        removeAdditional: "all",
-        useDefaults: false,
-      },
-    },
-  });
-
   await server.register(fastifySensible);
   await server.register(fastifyCors, {
     origin: ["http://localhost"],
     credentials: true,
   });
-  await server.register(fastifyWebsocket, {
-    options: {
-      maxPayload: 1048576, // 1MB
-      clientTracking: true, // Enable client tracking
-    },
-  });
   await server.register(fastifyCookie);
   await server.register(fastifyRequestContext, {
     asyncLocalStorage: requestContextStorage,
   });
-  // await server.register(fastifySession, {
-  //   secret: envConfig.SESSION_SECRET_KEY,
-  //   store: new RedisStore({
-  //     client: services.redis,
-  //     prefix: "sessions:",
-  //   }),
-  //   cookieName: "sessionId",
-  //   cookie: {
-  //     secure: envConfig.NODE_ENV === NodeEnv.Production,
-  //     maxAge: 24 * 60 * 60 * 1000, // 1 day
-  //   },
-  // });
 
   // docs
   await server.register(fastifySwagger, {
@@ -141,21 +124,32 @@ export async function prepareServer(
   }
 
   // Business logic plugins
-  authPlugin(server, { authVerifier: services.authVerifier });
+  authPlugin(server, { authVerifier });
 
   return server;
 }
 
+export async function prepareWebsocketServer(
+  parent: ServiceParent,
+  httpServer: FastifyTypeboxInstance
+) {
+  const websocketServer = new WebSocketServer(parent, httpServer);
+
+  return websocketServer;
+}
+
 export async function registerRoutes(
   server: FastifyTypeboxInstance,
+  wsServer: WebSocketServer,
   rootService: RootService,
-  { authIssuer, authVerifier, redis, entityManager }: ApiServices
+  { authIssuer, redis, entityManager }: ApiServices & AuthServices
 ) {
   const context: ServiceContext = {
     redis,
     entityManager,
+    publisher: wsServer,
   };
-  const register = <TResource extends BaseResource>(
+  const registerHttp = <TResource extends BaseResource>(
     service: ResourceRoute<TResource>
   ) => {
     registerResourceRoutes({
@@ -163,31 +157,36 @@ export async function registerRoutes(
       service,
     });
   };
+  const registerWs = <TResource extends BaseResource>(
+    service: ResourceHandler<TResource>
+  ) => {
+    wsServer.router.registerHandler(service);
+  };
 
   await server.register(systemRoutes);
   await server.register(authDomain, {
-    authService: new AuthService(context),
+    userService: new UserService(context),
     authIssuer,
-    authVerifier,
-    entityManager,
   });
 
   {
     // This should provide a ws info about participants
     const service = new SessionService(rootService, context);
-    register(service.route());
+    registerHttp(service.route());
+    registerWs(service.wsHandler());
   }
   {
     // This should provide a ws info about settings
     const service = new SessionSettingsService(rootService, context);
-    register(service.route());
+    registerHttp(service.route());
+    registerWs(service.wsHandler());
     service.createConsumers();
   }
   {
     // Same as session settings
     const service = new LobbyService(rootService, context);
-    register(service.route());
+    registerHttp(service.route());
+    service.createConsumers();
   }
-
-  await server.register(streamDomain);
+  // await server.register(streamDomain);
 }

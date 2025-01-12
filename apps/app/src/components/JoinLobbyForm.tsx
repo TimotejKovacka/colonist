@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/input-otp";
 import { Button } from "@/components/ui/button";
 import { useLobbyMutations } from "@/hooks/use-lobby";
-import type { SessionId } from "@colonist/api-contracts";
+import type { SessionId } from "@pilgrim/api-contracts";
 
 const schema = Type.Object({
   sessionId: Type.String({

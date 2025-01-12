@@ -1,4 +1,4 @@
-import { assert, type Logger } from "@colonist/utils";
+import { assert, type Logger } from "@pilgrim/utils";
 import { createLogger } from "./logger.js";
 import { Promised } from "./promised.js";
 import type { NoOverride } from "./no-override.js";

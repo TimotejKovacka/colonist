@@ -10,7 +10,7 @@ import {
   type ResourceBody,
   sessionSettingsResource,
   type ResourceIdsModifiedAt,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 import { api } from "./base-api";
 
 export const lobbyApi = {

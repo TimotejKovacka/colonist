@@ -5,3 +5,4 @@ export * from "./service-context.js";
 export * from "./state-reader.js";
 export * from "./state-store.js";
 export * from "./state-consumer.js";
+export * from "./publisher.js";

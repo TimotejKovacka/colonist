@@ -11,7 +11,7 @@ import {
   touchResource,
   idsRef,
   pickIds,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 import * as uuid from "uuid";
 
 import type { Redis } from "ioredis";
@@ -22,7 +22,8 @@ import { StateReader, stateRedisTag } from "./state-reader.js";
 import { ServiceContainer, type ServiceParent } from "../service.js";
 import { RedisStreamProducer } from "../redis/redis.stream-producer.js";
 import type { Message } from "./state-consumer.js";
-import { JsonDecoder } from "@colonist/utils";
+import { JsonDecoder } from "@pilgrim/utils";
+import type { Publisher } from "./publisher.js";
 
 const nullValue = "null";
 const stateTtl = 24 * 3600_000;
@@ -44,6 +45,7 @@ export class StateStore<
   override readonly redis: Redis;
   override readonly resource: TResource;
   readonly type: string;
+  readonly publisher: Publisher;
   readonly producer: RedisStreamProducer<Message<TResource>>;
   readonly decoder = new JsonDecoder<ResourceDto<TResource>>();
 
@@ -57,6 +59,7 @@ export class StateStore<
     this.redis = context.redis;
     this.resource = resource;
     this.type = resource.type;
+    this.publisher = context.publisher;
     this.producer = new RedisStreamProducer({
       redis: this.redis,
       streamKey: redisStreamKey(this.type),
@@ -83,6 +86,7 @@ export class StateStore<
     await Promise.all([
       this.redis.set(key, value, "PX", stateTtl),
       this.producer.publish(message),
+      this.publisher.publish(this.resource, message),
     ]);
   }
 
@@ -101,7 +105,11 @@ export class StateStore<
       oldDto: this.decoder.decode(oldValue),
     };
 
-    await Promise.all([this.redis.del(key), this.producer.publish(message)]);
+    await Promise.all([
+      this.redis.del(key),
+      this.producer.publish(message),
+      this.publisher.publish(this.resource, message),
+    ]);
   }
 
   async post(

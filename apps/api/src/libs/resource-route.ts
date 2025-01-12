@@ -15,9 +15,9 @@ import {
   cleanupSchemaDefaults,
   type ResourceId,
   type ResourceMethodSchema,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 import type { FastifyTypeboxInstance } from "../../../../apps/api/src/utils/fastify.js";
-import { assert } from "@colonist/utils";
+import { assert } from "@pilgrim/utils";
 import { CREATED_RESOURCE_ID_HEADER } from "../../../../apps/api/src/libs/constants.js";
 import type { FastifyReply, FastifyRequest } from "fastify";
 

@@ -4,7 +4,7 @@ import type {
   ItemOfList,
   ResourceDto,
   ResourceIds,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 
 import type { Redis } from "ioredis";
 import { ServiceContainer, type ServiceParent } from "../service.js";

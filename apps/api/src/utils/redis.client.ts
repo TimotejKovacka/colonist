@@ -1,6 +1,6 @@
 import { Redis } from "ioredis";
-import { ServiceNode, type ServiceParent } from "@colonist/backend-utils";
-import { assert } from "@colonist/utils";
+import { ServiceNode, type ServiceParent } from "@pilgrim/backend-utils";
+import { assert } from "@pilgrim/utils";
 
 type RedisConfig = {
   host: string;

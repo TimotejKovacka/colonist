@@ -1,5 +1,5 @@
 import * as pino from "pino";
-import type { Logger, LogMethod } from "@colonist/utils";
+import type { Logger, LogMethod } from "@pilgrim/utils";
 
 // biome-ignore lint/complexity/useLiteralKeys: <explanation>
 const [rootLevel, ...levelsArray] = (process.env["LOG_LEVEL"] || "info").split(
@@ -13,7 +13,7 @@ const levels = Object.fromEntries<string>(
   })
 );
 
-// biome-ignore lint/complexity/useLiteralKeys: <explanation>
+// biome-ignore lint/complexity/useLiteralKeys: accessing env variable
 const logPretty = process.env["LOG_PRETTY"] === "1";
 
 const rootPinoLogger = pino.pino({

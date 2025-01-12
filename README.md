@@ -1,3 +1,21 @@
+# WebSockets requirements
+- Lifecycle of connectivity
+    - On socket Connection with ack (ack going from client)
+    - On socket About to be disconnected
+    - On soccket disconnected
+    - On message
+## Server
+- Namespace per resource type
+    - Allows unified business logic handling per resource type
+    - Using ResourceIds as the room identifier
+- State library requires a publisher
+    - Publisher needs access to namespace so that it can send patches to rooms in respective namespace
+
+## Client
+- Hook to get socket & connectivity status
+- Stable way to attach listener to messages in a hook too
+
+
 # Colonist - Catan like game in pixel art
 
 ## Graphics
@@ -184,5 +202,18 @@ classDiagram
 
 # notes
 
-- Static site with 2 options (create, join)
--
+# WS
+
+- Table representing what a sent message means from the perspective of entity
+
+|        | Subscribe                                        | Unsubscribe                                     | Patch                                         |
+|--------|--------------------------------------------------|-------------------------------------------------|-----------------------------------------------|
+| Server | Confirmation of subscription requested by Client | Confirmation of unsubscribe requested by Client | Telling Client to update state based on patch |
+| Client | Requesting subscription                          | Asking to cleanup existing subscription         | Telling Server to update state based on patch |
+
+- Table representing what received message means from the perspective of entity
+
+|        | Subscribe                                         | Unsubscribe                              | Patch                              |
+|--------|---------------------------------------------------|------------------------------------------|------------------------------------|
+| Server | Client asking to receive updates about a resource | Client asking to be removed from updates | Update server state based on patch |
+| Client | Server ack Client's request                       | Server Ack client's request              | Update client state based on patch |

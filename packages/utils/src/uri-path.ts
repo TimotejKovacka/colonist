@@ -1,4 +1,4 @@
-interface PathSegment {
+export interface PathSegment {
   key: string;
   value: string;
 }
@@ -21,7 +21,7 @@ function isValidSegment(
 /**
  * Parse a path into segments with strong type guarantees
  */
-function parsePath(path: string): PathSegment[] {
+export function parsePath(path: string): PathSegment[] {
   if (!path) {
     return [];
   }
@@ -106,7 +106,7 @@ function areValidSegmentArrays(
 /**
  * Extract parameters from a concrete path based on a pattern with complete type safety
  */
-function extractParams(
+export function extractParams(
   pattern: string,
   target: string
 ): Record<string, string> | null {

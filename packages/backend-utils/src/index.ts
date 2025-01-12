@@ -6,3 +6,6 @@ export * from "./validate.js";
 export * from "./redis/index.js";
 export * from "./resource/index.js";
 export * from "./request-context.js";
+export * from "./stream/index.js";
+export * from "./debug-tweaks.js";
+export * from "./stream-publisher.js";

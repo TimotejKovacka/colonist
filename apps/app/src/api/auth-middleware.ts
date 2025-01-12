@@ -1,6 +1,7 @@
 import { type ResourceType, tokenManager } from "@/lib/auth/token-manager";
 import type { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { authApi } from "./auth-api";
+import { ConsoleLogger } from "@pilgrim/utils";
 
 interface ResourceInfo {
   type: ResourceType;
@@ -11,7 +12,15 @@ const extractResourceFromUrl = (url: string): ResourceInfo | null => {
   const sessionMatch = url.match(
     /\/userId\/[0-9a-f-]+\/sessionId\/([a-zA-Z0-9]+)/
   );
-  if (sessionMatch) {
+  console.log(url);
+  if (
+    sessionMatch &&
+    !(
+      url.endsWith("/session") ||
+      url.endsWith("/join") ||
+      url.endsWith("/leave")
+    )
+  ) {
     return { type: "session", id: sessionMatch[1] };
   }
 
@@ -22,24 +31,25 @@ const extractResourceFromUrl = (url: string): ResourceInfo | null => {
 };
 
 export function withAuthMiddleware(api: AxiosInstance) {
+  const logger = new ConsoleLogger({ module: "AuthMiddleware" });
   api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
     if (config.url === "/auth/authenticate") {
       return config;
     }
-    const resourceInfo = config.url ? extractResourceFromUrl(config.url) : null;
-    if (resourceInfo && !tokenManager.hasResourceClaim(resourceInfo)) {
-      try {
-        console.log("requesting claim", resourceInfo);
-        await authApi.token({
-          resourceType: resourceInfo.type,
-          resourceId: resourceInfo.id,
-        });
-      } catch (error) {
-        return Promise.reject(
-          new Error(`Failed to obtain ${resourceInfo.type} claim`)
-        );
-      }
-    }
+    // const resourceInfo = config.url ? extractResourceFromUrl(config.url) : null;
+    // if (resourceInfo && !tokenManager.hasResourceClaim(resourceInfo)) {
+    //   try {
+    //     logger.info("requesting claim", { url: config.url, resourceInfo });
+    //     await authApi.token({
+    //       resourceType: resourceInfo.type,
+    //       resourceId: resourceInfo.id,
+    //     });
+    //   } catch (error) {
+    //     return Promise.reject(
+    //       new Error(`Failed to obtain ${resourceInfo.type} claim`)
+    //     );
+    //   }
+    // }
 
     const token = tokenManager.getToken();
     if (token) {

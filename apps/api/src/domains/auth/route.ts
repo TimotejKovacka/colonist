@@ -1,10 +1,8 @@
-import type { EntityManager } from "typeorm";
 import type { FastifyTypeboxInstance } from "../../utils/fastify.js";
-import { User } from "./user.entity.js";
-import type { AuthIssuer, TokenData } from "../../libs/auth/auth-issuer.js";
+import type { AuthIssuer } from "../../libs/auth/auth-issuer.js";
 import { Type } from "@sinclair/typebox";
-import type { AuthService } from "./auth-service.js";
-import type { AuthVerifier } from "../../libs/auth/auth-verifier.js";
+import type { UserService } from "./user-service.js";
+import { assert } from "@pilgrim/utils";
 
 const userSchema = Type.Object({
   id: Type.String(),
@@ -14,15 +12,11 @@ const userSchema = Type.Object({
 export async function authDomain(
   fastify: FastifyTypeboxInstance,
   {
-    authService,
-    authVerifier,
-    entityManager,
+    userService,
     authIssuer,
   }: {
-    authService: AuthService;
-    authVerifier: AuthVerifier;
+    userService: UserService;
     authIssuer: AuthIssuer;
-    entityManager: EntityManager;
   }
 ) {
   fastify.post(
@@ -43,14 +37,21 @@ export async function authDomain(
       },
     },
     async (request) => {
-      const user = request.body.user ?? (await authService.createAnonUser());
+      const { user } = request.body;
+      const isClientSentUserValid = user
+        ? await userService.isValidUser(user)
+        : false;
+      const actualUser = isClientSentUserValid
+        ? user
+        : await userService.createAnonUser();
+      assert(actualUser !== undefined);
 
       const { token } = await authIssuer.issueToken({
-        id: user.id,
-        name: user.name,
+        id: actualUser.id,
+        name: actualUser.name,
       });
 
-      return { token, user };
+      return { token, user: actualUser };
     }
   );
   fastify.post(

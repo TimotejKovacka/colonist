@@ -5,7 +5,7 @@ import {
   type ResourceIdsModifiedAt,
   type SessionSettingsResource,
   sessionSettingsResource,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Spinner } from "../ui/spinner";
 import {

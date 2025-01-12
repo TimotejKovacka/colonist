@@ -16,11 +16,7 @@
 		// Type generation
 		"declaration": true,
 		"declarationMap": true,
-		"sourceMap": true,
-
-		"paths": {
-			"@colonist/backend-utils": ["../../packages/backend-utils/src"]
-		}
+		"sourceMap": true
 	},
 	"include": ["src/**/*.ts", "src/**/*.d.ts"],
 	"exclude": [

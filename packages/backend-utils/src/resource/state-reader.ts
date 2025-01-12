@@ -5,7 +5,7 @@ import {
   type ResourceDto,
   type ResourceId,
   type ResourceIds,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 import createHttpErrors from "http-errors";
 
 import type { Redis } from "ioredis";

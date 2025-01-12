@@ -4,7 +4,7 @@ import { useUserStore } from "@/stores/user-store";
 import { Alert } from "./ui/alert";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { appLogger } from "@/main";
-import { isObject } from "@colonist/utils";
+import { isObject } from "@pilgrim/utils";
 
 interface AuthProviderProps {
   children: React.ReactNode;

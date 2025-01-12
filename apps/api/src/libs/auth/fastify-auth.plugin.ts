@@ -1,13 +1,13 @@
 import type { FastifyRequest } from "fastify";
 import type { FastifyTypeboxInstance } from "../../utils/fastify.js";
 import type { AuthContext, AuthVerifier } from "./auth-verifier.js";
-import type { BaseResource, ResourceId } from "@colonist/api-contracts";
-import { assert, isObject } from "@colonist/utils";
+import type { BaseResource, ResourceId } from "@pilgrim/api-contracts";
+import { assert, isObject } from "@pilgrim/utils";
 import {
   assertResourceAuthContext,
   requestContextStorage,
   type RequestContextData,
-} from "@colonist/backend-utils";
+} from "@pilgrim/backend-utils";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -70,7 +70,7 @@ export function authPlugin(
       payload.sub !== undefined,
       "Subject of authorization needs to be known"
     );
-    contextStore.profile = { name: payload.name };
+    contextStore.profile = { id: payload.sub, name: payload.name };
 
     const authContext = {
       resourceAuth: {

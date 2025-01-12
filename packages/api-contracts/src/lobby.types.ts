@@ -9,7 +9,7 @@ export const lobbyResource = createResource({
   },
   idsOrder: ["sessionId"],
   authRoles: {
-    sessionId: "participant",
+    sessionId: undefined, // TODO: should be participant
   },
   body: {
     ...sessionSettingsBodySchema,

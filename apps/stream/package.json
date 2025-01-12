@@ -1,0 +1,40 @@
+{
+  "name": "@pilgrim/stream",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./src/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc --build",
+    "build:watch": "tsc --build --watch",
+    "clean": "rimraf dist *.tsbuildinfo",
+    "rebuild": "pnpm clean && pnpm build",
+    "run": "node dist/main.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@fastify/cors": "8.5.0",
+    "@fastify/sensible": "5.6.0",
+    "@fastify/swagger": "8.13.0",
+    "@fastify/swagger-ui": "^2.1.0",
+    "@fastify/type-provider-typebox": "4.1.0",
+    "@pilgrim/api-contracts": "workspace:*",
+    "@pilgrim/backend-utils": "workspace:*",
+    "@pilgrim/utils": "workspace:*",
+    "@sinclair/typebox": "^0.34.13",
+    "env-schema": "^6.0.0",
+    "fastify": "4.29.0",
+    "ioredis": "^5.4.2",
+    "pino-pretty": "^13.0.0",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

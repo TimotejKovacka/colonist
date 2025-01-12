@@ -1,5 +1,5 @@
 {
-  "name": "@colonist/backend-utils",
+  "name": "@pilgrim/backend-utils",
   "version": "0.0.1",
   "description": "",
   "private": true,
@@ -25,13 +25,15 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "@colonist/api-contracts": "workspace:*",
-    "@colonist/utils": "workspace:*",
+    "@pilgrim/api-contracts": "workspace:*",
+    "@pilgrim/utils": "workspace:*",
     "@sinclair/typebox": "^0.32.35",
+    "axios": "^1.7.9",
     "http-errors": "^2.0.0",
     "ioredis": "^5.4.2",
     "pino": "^9.6.0",
-    "tslib": "^2.8.1"
+    "tslib": "^2.8.1",
+    "uuid": "^11.0.3"
   },
   "files": [
     "dist",

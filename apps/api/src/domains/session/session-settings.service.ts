@@ -1,13 +1,11 @@
 import {
   lobbyResource,
-  pickDtoIds,
   sessionResource,
   sessionSettingsResource,
   type LobbyResource,
-  type ResourceIds,
   type SessionResource,
   type SessionSettingsResource,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 import {
   ServiceContainer,
   StateConsumer,
@@ -16,8 +14,9 @@ import {
   type Message,
   type ServiceContext,
   type ServiceParent,
-} from "@colonist/backend-utils";
+} from "@pilgrim/backend-utils";
 import type { ResourceRoute } from "../../libs/resource-route.js";
+import type { ResourceHandler } from "../../libs/resource-router.js";
 
 /**
  * Session settings service to be serving the owner of a session
@@ -41,8 +40,29 @@ export class SessionSettingsService extends ServiceContainer {
   route(): ResourceRoute<SessionSettingsResource> {
     return {
       resource: sessionSettingsResource,
-      tryGet: (ids) => this.sessionSettingsStore.get(ids),
+      tryGet: (ids) => this.sessionSettingsStore.tryGet(ids),
       patch: (ids, body) => this.sessionSettingsStore.patchExisting(ids, body),
+    };
+  }
+
+  wsHandler(): ResourceHandler<SessionSettingsResource> {
+    return {
+      resource: sessionSettingsResource,
+      onSubscribe: async (socket, ids) => {
+        this.logger.info("New subscription to resource", {
+          ids,
+          socketId: socket.id,
+        });
+      },
+      onUnsubscribe: async (socket, ids) => {
+        this.logger.info("Unsubscribed from resource", {
+          ids,
+          socketId: socket.id,
+        });
+      },
+      onPatch: async (socket, ids) => {
+        this.logger.info("New patch", { ids, socketId: socket.id });
+      },
     };
   }
 

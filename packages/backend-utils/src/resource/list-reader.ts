@@ -10,7 +10,7 @@ import {
   type ResourceDto,
   type ResourceIds,
   setValueDefaults,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 
 import type { Redis } from "ioredis";
 import { RedisSortedSet } from "../redis/redis.sorted-set.js";

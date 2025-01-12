@@ -1,0 +1,42 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"extends": "../../tsconfig.node.json",
+	"compilerOptions": {
+		// Node-specific settings
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"target": "ES2022",
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+
+		// Output configuration
+		"rootDir": "./src",
+		"outDir": "./dist",
+
+		// Type generation
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+
+		"paths": {
+			"backend-utils": ["../../packages/backend-utils/src"]
+		}
+	},
+	"include": ["src/**/*.ts", "src/**/*.d.ts"],
+	"exclude": [
+		"**/*.test.ts",
+		"**/*.spec.ts",
+		"**/__tests__/**",
+		"**/test/**",
+		"node_modules",
+		"dist"
+	],
+	"references": [
+		{ "path": "../../packages/api-contracts" },
+		{ "path": "../../packages/utils" },
+		{ "path": "../../packages/backend-utils" }
+	],
+	"ts-node": {
+		"esm": true
+	}
+}

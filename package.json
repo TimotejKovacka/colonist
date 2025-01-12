@@ -1,5 +1,5 @@
 {
-  "name": "colonist-monorepo",
+  "name": "pilgrim-monorepo",
   "private": true,
   "scripts": {
     "clean": "rimraf packages/*/dist",
@@ -7,7 +7,8 @@
     "build": "pnpm -r build",
     "rebuild": "pnpm clean && pnpm build",
     "test": "pnpm -r test",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "docker:up": "./scripts/docker-compose.sh"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -2,11 +2,13 @@ import type { Redis } from "ioredis";
 import type { ServiceContext } from "../../libs/service-context.js";
 import {
   lobbyResource,
+  pickDtoIds,
   sessionSettingsResource,
   type LobbyResource,
+  type ResourceDto,
   type ResourceIds,
   type SessionSettingsResource,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 import type { ResourceRoute } from "../../libs/resource-route.js";
 import {
   ServiceContainer,
@@ -15,7 +17,7 @@ import {
   StateStore,
   type Message,
   type ServiceParent,
-} from "@colonist/backend-utils";
+} from "@pilgrim/backend-utils";
 
 /**
  * Session settings for participants
@@ -56,8 +58,10 @@ export class LobbyService extends ServiceContainer {
       dtos: messages.map(({ dto }) => dto),
       dto: messages[0]?.dto,
     });
-    for (const { dto } of messages) {
-      if (dto !== undefined) {
+    for (const { oldDto, dto } of messages) {
+      if (oldDto === undefined) {
+        await this.create(dto);
+      } else if (dto !== undefined) {
         await this.update(dto);
       } else {
         // do nothing when session is deleted, settings will be claimed by ttl
@@ -66,12 +70,28 @@ export class LobbyService extends ServiceContainer {
     return {};
   }
 
-  async update(ids: ResourceIds<SessionSettingsResource>) {
+  async create(dto: ResourceDto<SessionSettingsResource>) {
     try {
-      const settings = await this.sessionSettingsReader.get(ids);
-      await this.lobbyStore.patchExisting(ids, settings);
+      await this.lobbyStore.put(dto, dto);
     } catch (err) {
-      this.logger.error("Failed to update lobby", { ids }, err);
+      this.logger.error(
+        "Failed to create lobby",
+        { ids: pickDtoIds(sessionSettingsResource, dto) },
+        err
+      );
+    }
+  }
+
+  async update(dto: ResourceDto<SessionSettingsResource>) {
+    try {
+      const settings = await this.sessionSettingsReader.get(dto);
+      await this.lobbyStore.patchOrCreate(dto, settings);
+    } catch (err) {
+      this.logger.error(
+        "Failed to update lobby",
+        { ids: pickDtoIds(sessionSettingsResource, dto) },
+        err
+      );
     }
   }
 }

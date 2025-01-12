@@ -8,10 +8,15 @@ import {
 } from "unique-names-generator";
 import { v4 } from "uuid";
 
-export class AuthService {
+export class UserService {
   readonly userRepository: Repository<User>;
   constructor(context: ServiceContext) {
     this.userRepository = context.entityManager.getRepository(User);
+  }
+
+  async isValidUser(u: { id: string }) {
+    const user = await this.userRepository.findOne({ where: { id: u.id } });
+    return !!user;
   }
 
   async createAnonUser(): Promise<User> {

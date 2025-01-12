@@ -7,7 +7,7 @@ import {
   type ResourceDto,
   type ResourceObject,
   type UserId,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 
 export type Participant = {
   userId: string;

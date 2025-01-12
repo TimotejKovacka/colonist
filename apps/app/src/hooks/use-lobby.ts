@@ -1,18 +1,16 @@
 import { useNavigate } from "react-router-dom";
-import { getUserState } from "@/stores/user-store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { lobbyApi } from "@/api/lobby-api";
 import {
   type SessionId,
   type SessionResource,
   sessionResource,
   stringifyPostPath,
-  type LobbyResource,
   type ResourceDto,
   type ResourceIds,
   type UserId,
   stringifyMethodPath,
-} from "@colonist/api-contracts";
+  querifyResourceIds,
+} from "@pilgrim/api-contracts";
 import { api, type AxiosApiError } from "@/api/base-api";
 import { useToastStore } from "@/stores/toast-store";
 
@@ -28,7 +26,6 @@ export const useLobbyMutations = ({
   withNavigation?: boolean;
 }) => {
   const navigate = useNavigate();
-  const user = getUserState();
   const queryClient = useQueryClient();
 
   const goToLobbyPage = (sessionId: string) => navigate(`/lobby/${sessionId}`);
@@ -38,7 +35,6 @@ export const useLobbyMutations = ({
     mutationFn: async () => {
       const response = await api.post<ResourceDto<SessionResource>>(
         stringifyPostPath(sessionResource, {
-          userId: user.id,
           sessionId: "" as SessionId,
         }),
         {}
@@ -69,6 +65,9 @@ export const useLobbyMutations = ({
     },
     onSuccess: (ids) => {
       // TODO(soon): Should invalidate lobby query
+      queryClient.refetchQueries({
+        queryKey: querifyResourceIds(sessionResource, ids),
+      });
       if (withNavigation) {
         goToLobbyPage(ids.sessionId);
       }
@@ -79,6 +78,13 @@ export const useLobbyMutations = ({
         if (
           response?.data.message === SESSION_API_ERROR_MESSAGES.PART_OF_SESSION
         ) {
+          console.log(
+            "invalidating query",
+            querifyResourceIds(sessionResource, ids)
+          );
+          queryClient.refetchQueries({
+            queryKey: querifyResourceIds(sessionResource, ids),
+          });
           goToLobbyPage(ids.sessionId);
           return;
         }

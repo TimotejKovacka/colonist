@@ -23,5 +23,6 @@
 		"**/test/**",
 		"node_modules",
 		"dist"
-	]
+	],
+	"references": [{ "path": "../../packages/utils" }]
 }

@@ -1,4 +1,4 @@
-import { ConsoleLogger, EventEmitter } from "@colonist/utils";
+import { ConsoleLogger, EventEmitter } from "@pilgrim/utils";
 
 export enum TokenEvent {
   TokenUpdated = "token-updated",

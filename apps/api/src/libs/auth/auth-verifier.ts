@@ -3,9 +3,9 @@ import {
   ServiceContainer,
   type ServiceParent,
   type NoOverride,
-} from "@colonist/backend-utils";
-import { assert } from "@colonist/utils";
-import type { UserId } from "@colonist/api-contracts";
+} from "@pilgrim/backend-utils";
+import { assert } from "@pilgrim/utils";
+import type { UserId } from "@pilgrim/api-contracts";
 import { readFileSync } from "node:fs";
 import type { Claim } from "./auth-issuer.js";
 

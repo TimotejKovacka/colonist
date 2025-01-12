@@ -1,11 +1,11 @@
-import { ServiceNode, type ServiceParent } from "@colonist/backend-utils";
+import { ServiceNode, type ServiceParent } from "@pilgrim/backend-utils";
 import {
   DataSource,
   type EntitySchema,
   type MixedList,
   type EntityManager,
 } from "typeorm";
-import { assert } from "@colonist/utils";
+import { assert } from "@pilgrim/utils";
 
 type TypeORMConfig = {
   host: string;

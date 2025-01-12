@@ -1,4 +1,4 @@
-import { JsonEncoder } from "@colonist/utils";
+import { JsonEncoder } from "@pilgrim/utils";
 import type { Redis } from "ioredis";
 
 export class RedisStreamProducer<Message> {

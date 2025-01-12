@@ -1,6 +1,6 @@
 import type { Redis } from "ioredis";
 import { ServiceNode, type ServiceParent } from "../service.js";
-import { sleep, JsonDecoder } from "@colonist/utils";
+import { sleep, JsonDecoder } from "@pilgrim/utils";
 
 export type StreamProcessorResult<Message> = {
   errors?: unknown[];

@@ -7,8 +7,7 @@ import {
   type SessionResource,
   type SessionSettingsResource,
   sessionSettingsResource,
-  idsModifiedAtOfResourcce,
-} from "@colonist/api-contracts";
+} from "@pilgrim/api-contracts";
 import createHttpError from "http-errors";
 import type { ResourceRoute } from "../../libs/resource-route.js";
 import {
@@ -17,8 +16,9 @@ import {
   StateStore,
   validate,
   type ServiceParent,
-} from "@colonist/backend-utils";
+} from "@pilgrim/backend-utils";
 import { getProfile } from "../../libs/auth/profile.js";
+import type { ResourceHandler } from "../../libs/resource-router.js";
 
 export class SessionService extends ServiceContainer {
   readonly redis: Redis;
@@ -38,33 +38,77 @@ export class SessionService extends ServiceContainer {
   route(): ResourceRoute<SessionResource> {
     return {
       resource: sessionResource,
-      tryGet: (ids) => this.sessionStore.tryGet(ids),
-      post: (ids) =>
-        this.sessionStore.post(
+      tryGet: (ids, query) => this.get(ids, query),
+      post: async (ids) => {
+        const { id, name } = getProfile();
+        return await this.sessionStore.post(
           ids,
           {
+            owner: id,
             participants: {
-              [ids.userId]: getProfile().name,
+              [id]: name,
             },
           },
           () => Promise.resolve(generateSessionId())
-        ),
+        );
+      },
       methods: {
-        join: (ids) => this.joinSession(ids),
+        // join: (ids) => this.joinSession(ids),
         leave: (ids) => this.leaveSession(ids),
       },
     };
   }
 
+  wsHandler(): ResourceHandler<SessionResource> {
+    return {
+      resource: sessionResource,
+      onSubscribe: async (socket, ids) => {
+        this.logger.info("New subscription to resource", {
+          ids,
+          socketId: socket.id,
+        });
+      },
+      onUnsubscribe: async (socket, ids) => {
+        this.logger.info("Unsubscribed from resource", {
+          ids,
+          socketId: socket.id,
+        });
+      },
+      onPatch: async (socket, ids, patch) => {
+        this.logger.info("New patch", { ids, socketId: socket.id, patch });
+      },
+    };
+  }
+
+  async get(ids: ResourceIds<SessionResource>, query: { autoJoin: boolean }) {
+    const autoJoin = query.autoJoin === true;
+    const session = await this.sessionStore.tryGet(ids);
+    if (!session) {
+      return undefined;
+    }
+
+    const { id } = getProfile();
+    const isInSession = session.participants?.[id] !== undefined;
+    if (autoJoin && !isInSession) {
+      await this.joinSession(ids);
+      // Return the updated session after joining
+      return await this.sessionStore.tryGet(ids);
+    }
+
+    return session;
+  }
+
   async joinSession(ids: ResourceIds<SessionResource>) {
+    const { id, name } = getProfile();
     const session = await this.sessionStore.get(ids);
     validate(
       session.participants !== undefined,
       "Session needs to have at least 1 participant",
       createHttpError.BadRequest
     );
+    this.logger.warn("huh", { ids });
     validate(
-      session.participants[ids.userId] !== undefined,
+      session.participants[id] === undefined,
       "Already part of session",
       createHttpError.BadRequest
     );
@@ -80,12 +124,13 @@ export class SessionService extends ServiceContainer {
     return await this.sessionStore.patchExisting(ids, {
       participants: {
         ...session.participants,
-        [ids.userId]: getProfile().name,
+        [id]: name,
       },
     });
   }
 
   async leaveSession(ids: ResourceIds<SessionResource>) {
+    const { id } = getProfile();
     const session = await this.sessionStore.get(ids);
     validate(
       session.participants !== undefined,
@@ -93,7 +138,7 @@ export class SessionService extends ServiceContainer {
       createHttpError.BadRequest
     );
     validate(
-      session.participants[ids.userId] !== undefined,
+      session.participants[id] !== undefined,
       "Is not part of a session",
       createHttpError.BadRequest
     );
@@ -101,7 +146,7 @@ export class SessionService extends ServiceContainer {
     if (participantsLength === 1) {
       return await this.sessionStore.patchExisting(ids, { isDeleted: true });
     }
-    delete session.participants[ids.userId];
+    delete session.participants[id];
     return await this.sessionStore.patchExisting(ids, {
       participants: session.participants,
     });
