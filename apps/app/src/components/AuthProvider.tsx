@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
-import { authApi } from "@/api/auth-api";
-import { useUserStore } from "@/stores/user-store";
+import { UserState, useUserStore } from "@/stores/user-store";
 import { Alert } from "./ui/alert";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { appLogger } from "@/main";
-import { isObject } from "@pilgrim/utils";
+import { api } from "@/api/base-api";
 
 interface AuthProviderProps {
   children: React.ReactNode;
 }
+
+type AuthenticateRequestBody = {
+  user?: {
+    id: string;
+    name: string;
+  };
+};
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const { setUser, user } = useUserStore();
@@ -16,14 +21,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { isPending, error } = useQuery({
     queryKey: ["authenticate"],
     queryFn: async () => {
-      let args = undefined;
+      const reqBody: AuthenticateRequestBody = {};
       if (user) {
         appLogger.info("Found existing user", user);
-        args = { user };
+        reqBody.user = { ...user };
       }
-      const response = await authApi.authenticate(args);
-      setUser(response.user);
-      return response;
+      const { data } = await api.post<{ user: UserState; token: string }>(
+        "/auth/authenticate",
+        reqBody
+      );
+      setUser(data.user);
+      return data;
     },
     retry: (failureCount, error: unknown) => {
       // if (isObject(error) && "response" in error && "status" in error.response && error?.response?.status === 401) return false;

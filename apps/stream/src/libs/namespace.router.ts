@@ -72,13 +72,13 @@ export class NamespaceRouter extends ServiceContainer {
     this.resourceIdsRoomMiddleware(resource, newNsp, nspPathPattern);
 
     newNsp.on("connection", (socket) => {
-      nspHandler.onConnection?.(socket);
       this.logger.info("New connection", {
         name: nspName,
         sid: socket.id,
         ids: socket.data.ids,
         rooms: Array.from(socket.rooms),
       });
+      nspHandler.onConnection?.(socket);
 
       socket.on("patch", onPatch);
     });
@@ -108,7 +108,6 @@ export class NamespaceRouter extends ServiceContainer {
     nspPathPattern: PathPattern
   ) {
     nsp.use((socket, next) => {
-      this.logger.warn(socket.nsp.name);
       const ids = parseResourcePath<TResource>(nspPathPattern, socket.nsp.name);
       if (ids === null) {
         const err: ExtendedError = new Error("FATAL_ERROR");

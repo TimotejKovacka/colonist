@@ -1,156 +1,105 @@
-import type {
-  DefaultEventsMap,
-  EventNames,
-  EventsMap,
-} from "@socket.io/component-emitter";
-import type {
-  IoContextInterface,
-  SocketLike,
-  UseSocketEventOptions,
-  UseSocketEventReturnType,
-  UseSocketOptions,
-} from "./types";
-import type { Socket } from "socket.io-client";
-import { useSocket } from "./use-socket";
-import { noop } from "../utils/noop";
-import { useContext } from "react";
-import { IoContext } from "./io.context";
 import React from "react";
+import { IoContext } from "./io.context";
+import { Subscription } from "./types";
+import { Logger } from "@pilgrim/utils";
 
-type Parameter<T extends (...args: any) => any> = T extends (
-  ...args: infer P
-) => any
-  ? P[0]
-  : never;
+interface UseSocketEventOptions {
+  enabled?: boolean;
+  logger?: Logger;
+}
 
-function useSocketEvent<
-  T = never,
-  ListenEvents extends EventsMap = DefaultEventsMap,
-  EmitEvents extends EventsMap = ListenEvents,
-  EventKey extends EventNames<ListenEvents> = EventNames<ListenEvents>,
-  ListenMessageType = [T] extends [never]
-    ? Parameter<ListenEvents[EventKey]>
-    : T,
-  EmitMessageArgs extends any[] = Parameters<
-    EmitEvents[EventNames<EmitEvents>]
-  >,
-  //TODO: infer from last argument returntype(cb) of EmitEvents[EventKey]
-  // if last argument is a function then infer return type
-  // if last argument is not a function then infer void
-  EmitMessageCbReturnType = any
->(
-  socket: EventKey | SocketLike<Socket<ListenEvents, EmitEvents>>,
-  event:
-    | EventKey
-    | (UseSocketEventOptions<ListenMessageType> & UseSocketOptions),
-  options?: UseSocketEventOptions<ListenMessageType>
-): UseSocketEventReturnType<
-  ListenMessageType,
-  EmitMessageArgs,
-  EmitMessageCbReturnType
-> {
-  let enabled = true;
-  let actualSocket = socket;
-  let actualEvent = event;
-  let actualOptions = options;
-  if (typeof socket === "string") {
-    const _options = event as
-      | (UseSocketEventOptions<ListenMessageType> & UseSocketOptions)
-      | undefined;
-    actualOptions = _options;
-    enabled = _options?.enabled ?? true;
-    actualEvent = socket;
-    actualSocket = useSocket(_options).socket;
+const useSocketEvent = <T,>(
+  namespace: string,
+  event: string,
+  callback: (data: T) => void,
+  options: UseSocketEventOptions = { enabled: true }
+) => {
+  const context = React.useContext(IoContext);
+  if (context === null) {
+    throw new Error("Can't be used outside of IoContextProvider");
   }
 
-  const onMessage = options?.onMessage || noop;
-  let keepPrevious = options?.keepPrevious;
-  //   if (options) {
-  //     onMessage = options.onMessage;
-  //     keepPrevious = options.keepPrevious;
-  //   }
-
-  const ioContext = useContext<IoContextInterface<SocketLike>>(IoContext);
-  const { registerSharedListener, getConnection } = ioContext;
-  const connection = enabled
-    ? getConnection((socket as SocketLike).namespaceKey)
-    : null;
-  const [, rerender] = React.useState({});
-  const state = React.useRef<{
-    socket: SocketLike;
-    status: "connecting" | "connected" | "disconnected";
-    error: Error | null;
-    lastMessage: ListenMessageType;
-  }>({
-    socket: connection?.socket || new SocketMock(),
-    status: connection?.state.status || "disconnected",
-    error: null,
-    lastMessage: connection?.state.lastMessage[
-      event as string
-    ] as ListenMessageType,
-  });
-
-  const sendMessage = (...message: EmitMessageArgs) =>
-    new Promise<EmitMessageCbReturnType>((resolve, _reject) => {
-      (socket as SocketLike).emit(
-        event as string,
-        ...message,
-        (response: EmitMessageCbReturnType) => {
-          resolve(response);
-        }
-      );
+  const { enabled, logger: baseLogger } = options;
+  const logger = React.useMemo(() => {
+    if (!baseLogger) return null;
+    return baseLogger.child("useSocketEvent", {
+      namespace,
+      event,
+      hookId: Math.random().toString(36).slice(2, 9), // Unique identifier for this hook instance
     });
+  }, [baseLogger, namespace, event]);
+  const callbackRef = React.useRef(callback);
+  callbackRef.current = callback;
 
   React.useEffect(() => {
-    if (!connection) return;
-    const cleanup = registerSharedListener(
-      (socket as SocketLike).namespaceKey,
-      event as string
-    );
-    const unsubscribe = connection.subscribe((newState, _event) => {
-      let changed = false;
+    if (!enabled) {
+      logger?.debug("Hook disabled, skipping subscription");
+      return;
+    }
 
-      if (state.current.status !== newState.status) {
-        state.current.status = newState.status;
-        changed = true;
-      }
-      if (state.current.error !== newState.error) {
-        state.current.error = newState.error;
-        changed = true;
-      }
-
-      if (
-        _event === "message" &&
-        state.current.lastMessage !== newState.lastMessage[event as string]
-      ) {
-        const lastMessage = newState.lastMessage[event as string];
-        state.current.lastMessage = lastMessage;
-        if (onMessage) {
-          onMessage(lastMessage);
-        }
-        changed = true;
-      }
-
-      if (changed) {
-        rerender({});
-      }
+    logger?.info("Setting up socket event subscription", {
+      socketConnected: context.isConnected,
     });
-    return () => {
-      unsubscribe();
-      if (!keepPrevious) {
-        cleanup();
+
+    const wrappedCallback = (...args: any[]) => {
+      try {
+        logger?.debug("Executing event callback", { event });
+        callbackRef.current(...args);
+      } catch (error) {
+        logger?.error("Error in event callback", { error, event });
       }
     };
-  }, [
-    socket,
-    connection,
-    event,
-    keepPrevious,
-    onMessage,
-    registerSharedListener,
-  ]);
 
-  return { ...state.current, sendMessage };
-}
+    const subscription: Subscription = {
+      event,
+      callback: wrappedCallback,
+    };
+
+    try {
+      const nspConnection = context.getNsp(namespace);
+
+      logger?.debug("Socket connected, adding subscription");
+      nspConnection.addSubscription(subscription);
+      logger?.debug("Added subscription", { namespace, event });
+
+      // Set up connection state monitoring
+      const handleConnect = () => {
+        logger?.info("Socket connected, adding delayed subscription");
+        nspConnection.addSubscription(subscription);
+      };
+
+      const handleDisconnect = (reason: string) => {
+        logger?.info("Socket disconnected", { reason });
+      };
+
+      nspConnection.socket.on("connect", handleConnect);
+      nspConnection.socket.on("disconnect", handleDisconnect);
+
+      // Cleanup function
+      return () => {
+        logger?.info("Cleaning up socket event subscription");
+
+        // Remove state monitors
+        nspConnection.socket.off("connect", handleConnect);
+        nspConnection.socket.off("disconnect", handleDisconnect);
+
+        // Remove subscription
+        try {
+          nspConnection.removeSubscription(subscription);
+          logger?.debug("Subscription removed successfully");
+        } catch (error) {
+          logger?.error("Error removing subscription", { error });
+        }
+      };
+    } catch (error) {
+      logger?.error("Error setting up socket subscription", { error });
+      throw error;
+    }
+  }, [enabled, namespace, event, wrappedCallback, context, logger]);
+
+  return {
+    isConnected: context.isConnected ?? false,
+  };
+};
 
 export { useSocketEvent };

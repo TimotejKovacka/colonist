@@ -1,144 +1,251 @@
 import React from "react";
-import io from "socket.io-client";
+import { Manager } from "socket.io-client";
 import { IoContext } from "./io.context";
-import type {
-  ConnectionsRecord,
-  CreateConnectionFunc,
-  GetConnectionFunc,
-  SocketLike,
-  SocketsRecord,
-} from "./types";
+import { NamespaceState, Subscription } from "./types";
+import { Logger } from "@pilgrim/utils";
 
-const IoProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const connections = React.useRef<ConnectionsRecord>({});
-  const eventSubscriptions = React.useRef<ConnectionsRecord>({});
-  const sockets = React.useRef<SocketsRecord>({});
+/**
+ * Abstracts:
+ * - namespace decoupling (only use 1 socket connection per namespace, so that multiplexing works as intended)
+ *   - Connect & Disconnect are called once
+ *   - On loosing last connection to namespace perform disconnect and manually delete namespace record from io underlying manager to preserve multiplexing
+ * -
+ */
+const IoProvider: React.FC<React.PropsWithChildren<{ logger: Logger }>> = ({
+  children,
+  logger: baseLogger,
+}) => {
+  const logger = React.useMemo(
+    () => baseLogger.child("IoProvider"),
+    [baseLogger]
+  );
+  const socketLogger = React.useMemo(() => logger.child("Socket"), [logger]);
+  const namespaceLogger = React.useMemo(
+    () => logger.child("Namespace"),
+    [logger]
+  );
+  const manager = React.useRef<Manager>();
+  const namespaces = React.useRef<Map<string, NamespaceState>>(new Map());
+  const [isConnected, setIsConnected] = React.useState<boolean>(false);
 
-  const createConnection: CreateConnectionFunc<any> = (
-    namespaceKey,
-    urlConfig,
-    options = {}
-  ) => {
-    if (!(namespaceKey in connections.current)) {
-      connections.current[namespaceKey] = 1;
-    } else {
-      connections.current[namespaceKey] += 1;
+  React.useEffect(() => {
+    if (import.meta.hot) {
+      logger.debug("HMR detected, cleaning up existing connections");
+
+      // Force cleanup of any existing connections
+      window.setTimeout(() => {
+        const existingSockets = (window as any).__socketCleanup || [];
+        existingSockets.forEach((socket: any) => {
+          logger.debug("Cleaning up existing socket connection", {
+            nsp: socket.nsp,
+          });
+          socket.disconnect();
+        });
+        (window as any).__socketCleanup = [];
+      }, 0);
     }
 
-    const cleanup = () => {
-      if (--connections.current[namespaceKey] === 0) {
-        const socketsToClose = Object.keys(sockets.current).filter((key) =>
-          key.includes(namespaceKey)
-        );
-
-        for (const key of socketsToClose) {
-          sockets.current[key].socket.disconnect();
-          sockets.current[key].subscribers.clear();
-          delete sockets.current[key];
-        }
-      }
-    };
-
-    // By default socket.io-client creates a new connection for the same namespace
-    // The next line prevents that
-    if (sockets.current[namespaceKey]) {
-      sockets.current[namespaceKey].socket.connect();
-      return {
-        cleanup,
-        ...sockets.current[namespaceKey],
-      };
-    }
-
-    const handleConnect = () => {
-      sockets.current[namespaceKey].state.status = "connected";
-      sockets.current[namespaceKey].notify("connected");
-    };
-
-    const handleDisconnect = () => {
-      sockets.current[namespaceKey].state.status = "disconnected";
-      sockets.current[namespaceKey].notify("disconnected");
-    };
-
-    const socket = io(urlConfig.source, options) as SocketLike;
-    socket.namespaceKey = namespaceKey;
-
-    sockets.current = Object.assign({}, sockets.current, {
-      [namespaceKey]: {
-        socket,
-        state: {
-          status: "disconnected",
-          lastMessage: {},
-          error: null,
-        },
-        notify: (event: string) => {
-          for (const callback of sockets.current[namespaceKey].subscribers) {
-            callback(sockets.current[namespaceKey].state, event);
-          }
-        },
-        subscribers: new Set(),
-        subscribe: (callback) => {
-          sockets.current[namespaceKey].subscribers.add(callback);
-          return () =>
-            sockets.current[namespaceKey]?.subscribers.delete(callback);
-        },
-      },
+    logger.info("Initializing Socket.IO manager", {
+      path: `${import.meta.env.VITE_STREAM_HOST}/socket.io`,
+      transports: ["websocket"],
+      autoConnect: false,
     });
 
-    const handleError = (error) => {
-      sockets.current[namespaceKey].state.error = error;
-      sockets.current[namespaceKey].notify("error");
-    };
-    socket.on("error", handleError);
-    socket.on("connect_error", handleError);
+    manager.current = new Manager({
+      autoConnect: false,
+      transports: ["websocket"],
+      path: `${import.meta.env.VITE_STREAM_HOST}/socket.io`,
+    });
 
-    socket.on("connect", handleConnect);
-    socket.on("disconnect", handleDisconnect);
+    // Store socket references for HMR cleanup
+    if (import.meta.hot) {
+      (window as any).__socketCleanup = (window as any).__socketCleanup || [];
+    }
 
-    return {
-      cleanup,
-      ...sockets.current[namespaceKey],
-    };
-  };
+    manager.current.on("open", () => {
+      logger.info("Manager connection established");
+      setIsConnected(true);
+    });
 
-  const getConnection: GetConnectionFunc<any> = React.useCallback(
-    (namespaceKey = "") => sockets.current[namespaceKey],
-    []
-  );
+    manager.current.on("error", (error) => {
+      logger.error("Manager connection error", { error });
+    });
 
-  const registerSharedListener = (namespaceKey = "", forEvent = "") => {
-    if (
-      sockets.current[namespaceKey] &&
-      !sockets.current[namespaceKey].socket.hasListeners(forEvent)
-    ) {
-      sockets.current[namespaceKey].socket.on(forEvent, (message) => {
-        sockets.current[namespaceKey].state.lastMessage[forEvent] = message;
-        sockets.current[namespaceKey].notify("message");
+    manager.current.on("reconnect", (attempt) => {
+      logger.info("Manager reconnected", { attempt });
+    });
+
+    manager.current.on("reconnect_attempt", (attempt) => {
+      logger.debug("Manager attempting reconnection", { attempt });
+    });
+
+    manager.current.on("reconnect_error", (error) => {
+      logger.error("Manager reconnection error", { error });
+    });
+
+    manager.current.on("reconnect_failed", () => {
+      logger.error("Manager reconnection failed");
+    });
+
+    return () => {
+      logger.info("Cleaning up manager and namespaces");
+
+      namespaces.current.forEach((state, nsp) => {
+        namespaceLogger.debug("Disconnecting namespace", { namespace: nsp });
+        state.socket.disconnect();
       });
-    }
-    const subscriptionKey = `${namespaceKey}${forEvent}`;
-    const cleanup = () => {
-      if (--eventSubscriptions.current[subscriptionKey] === 0) {
-        delete eventSubscriptions.current[subscriptionKey];
-        if (sockets.current[namespaceKey])
-          delete sockets.current[namespaceKey].state.lastMessage[forEvent];
-      }
+
+      namespaces.current.clear();
+      manager.current?.engine.close();
+      logger.info("Cleanup completed");
     };
+  }, [logger, namespaceLogger]);
 
-    if (!(subscriptionKey in eventSubscriptions.current)) {
-      eventSubscriptions.current[subscriptionKey] = 1;
-    } else {
-      eventSubscriptions.current[subscriptionKey] += 1;
+  React.useEffect(() => {
+    if (!isConnected) {
+      return;
     }
 
-    return () => cleanup();
-  };
+    logger.debug("Manager connected, connecting namespaces", {
+      namespaceCount: namespaces.current.size,
+    });
+
+    namespaces.current.forEach((state, nsp) => {
+      namespaceLogger.debug("Connecting namespace", {
+        namespace: nsp,
+        subscriptionCount: state.subscriptions.size,
+      });
+      state.socket.connect();
+    });
+  }, [isConnected, logger, namespaceLogger]);
+
+  const connect = React.useCallback(() => {
+    logger.info("Manually connecting manager");
+    manager.current?.connect();
+  }, [logger]);
+
+  const getNamespaceConnection = React.useCallback(
+    (nsp: string) => {
+      if (!manager.current) {
+        const error = "Socket.IO Manager not initialized";
+        logger.error(error);
+        throw new Error(error);
+      }
+
+      // Get or create namespace state
+      if (!namespaces.current.has(nsp)) {
+        namespaceLogger.info("Creating new namespace connection", {
+          namespace: nsp,
+        });
+        const socket = manager.current.socket(nsp);
+
+        // Socket-specific logging
+        socket.on("connect", () => {
+          socketLogger.info("Namespace socket connected", { namespace: nsp });
+        });
+
+        socket.on("disconnect", (reason) => {
+          socketLogger.info("Namespace socket disconnected", {
+            namespace: nsp,
+            reason,
+          });
+        });
+
+        socket.on("error", (error) => {
+          socketLogger.error("Namespace socket error", {
+            namespace: nsp,
+            error,
+          });
+        });
+
+        socket.on("reconnect", (attempt) => {
+          socketLogger.info("Namespace socket reconnected", {
+            namespace: nsp,
+            attempt,
+          });
+        });
+
+        // Set up namespace state
+        namespaces.current.set(nsp, {
+          socket,
+          subscriptions: new Set(),
+        });
+
+        namespaceLogger.debug("Namespace state initialized", {
+          namespace: nsp,
+          isConnected: socket.connected,
+        });
+      }
+
+      const nspState = namespaces.current.get(nsp);
+      if (!nspState) {
+        const error = "Missing namespace state";
+        logger.error(error, { namespace: nsp });
+        throw new Error(error);
+      }
+
+      const addSubscription = (subscription: Subscription) => {
+        namespaceLogger.debug("Adding subscription", {
+          namespace: nsp,
+          event: subscription.event,
+          currentSubscriptions: nspState.subscriptions.size,
+        });
+
+        nspState.subscriptions.add(subscription);
+        nspState.socket.on(subscription.event, subscription.callback);
+
+        namespaceLogger.trace("Subscription added", {
+          namespace: nsp,
+          event: subscription.event,
+          newSubscriptionCount: nspState.subscriptions.size,
+        });
+      };
+
+      const removeSubscription = (subscription: Subscription) => {
+        namespaceLogger.debug("Removing subscription", {
+          namespace: nsp,
+          event: subscription.event,
+          currentSubscriptions: nspState.subscriptions.size,
+        });
+
+        nspState.subscriptions.delete(subscription);
+        nspState.socket.off(subscription.event, subscription.callback);
+
+        // If no more subscriptions, disconnect and cleanup namespace
+        if (nspState.subscriptions.size === 0) {
+          namespaceLogger.info("No more subscriptions, cleaning up namespace", {
+            namespace: nsp,
+          });
+
+          nspState.socket.disconnect();
+          namespaces.current.delete(nsp);
+
+          namespaceLogger.debug("Namespace cleaned up", { namespace: nsp });
+        } else {
+          namespaceLogger.trace("Subscription removed", {
+            namespace: nsp,
+            event: subscription.event,
+            remainingSubscriptions: nspState.subscriptions.size,
+          });
+        }
+      };
+
+      return {
+        socket: nspState.socket,
+        addSubscription,
+        removeSubscription,
+      };
+    },
+    [logger, socketLogger, namespaceLogger]
+  );
 
   return (
     <IoContext.Provider
       value={{
-        createConnection,
-        getConnection,
-        registerSharedListener,
+        manager: manager.current!,
+        isConnected,
+        connect,
+        getNsp: getNamespaceConnection,
       }}
     >
       {children}

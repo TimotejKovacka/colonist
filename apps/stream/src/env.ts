@@ -22,7 +22,7 @@ export enum NodeEnv {
 const envConfigSchema = Type.Object({
   NODE_ENV: Type.Enum(NodeEnv, { default: NodeEnv.Development }),
   HOST: Type.String({ default: "localhost" }),
-  PORT: Type.Number({ default: 3001 }),
+  PORT: Type.Number({ default: 3002 }),
   REDIS_PORT: Type.Number({ default: 6379 }),
   REDIS_HOST: Type.String({ default: "0.0.0.0" }),
   DEBUG_TWEAKS: Type.String({ default: "0" }),

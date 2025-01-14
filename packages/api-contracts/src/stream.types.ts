@@ -14,17 +14,19 @@ export type ServerToClientEvents = {
   error: (error: { message: string }) => void;
 };
 
-export type ClientToServerEvents = {
+export type ClientToServerEvents<
+  TResource extends BaseResource = BaseResource
+> = {
   // Patch already carries a ref inside it
-  patch: <TResource extends BaseResource>(
-    ref: ResourceRef<TResource>,
+  patch: <TResourceIndividual extends BaseResource = TResource>(
+    ref: ResourceRef<TResourceIndividual>,
     patch: ResourcePatch
   ) => void;
-  subscribe: <TResource extends BaseResource>(
-    ref: ResourceRef<TResource>
+  subscribe: <TResourceIndividual extends BaseResource = TResource>(
+    ref: ResourceRef<TResourceIndividual>
   ) => void;
-  unsubscribe: <TResource extends BaseResource>(
-    ref: ResourceRef<TResource>
+  unsubscribe: <TResourceIndividual extends BaseResource = TResource>(
+    ref: ResourceRef<TResourceIndividual>
   ) => void;
 };
 

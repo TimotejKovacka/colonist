@@ -25,8 +25,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { applyPatch, generatePatch, type Logger } from "@pilgrim/utils";
 import { useToastStore } from "@/stores/toast-store";
 import { useWebSocket } from "@/contexts/ws-context";
-import { useSocket } from "@/lib/websocket/use-socket";
-import { useSocketEvent } from "@/lib/websocket/use-socket-event";
 
 type DataState<TResource extends BaseResource> = ResourceRequired<
   ResourceDto<TResource>

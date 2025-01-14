@@ -51,6 +51,10 @@ export async function registerHttpRoutes(
   fastify: FastifyTypeboxInstance,
   websocket: WebSocketServer
 ) {
+  fastify.get("/ping", {}, async () => {
+    return { message: "pong" };
+  });
+
   fastify.post(
     "/publish",
     {

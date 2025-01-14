@@ -32,14 +32,14 @@ function binaryTransfer(integer: number, binary = 62) {
 
   let accessor = Math.abs(integer);
 
-  while (integer >= binary) {
-    num = integer % binary;
-    accessor = Math.floor(integer / binary);
+  while (accessor >= binary) {
+    num = accessor % binary;
+    accessor = Math.floor(accessor / binary);
     stack.push(hashTable(num));
   }
 
-  if (integer > 0) {
-    stack.push(hashTable(integer));
+  if (accessor > 0) {
+    stack.push(hashTable(accessor));
   }
 
   for (let i = stack.length - 1; i >= 0; i--) {

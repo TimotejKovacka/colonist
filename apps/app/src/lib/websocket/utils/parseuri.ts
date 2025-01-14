@@ -41,30 +41,29 @@
 Also supports IPv4/IPv6 addresses, URNs, and many edge cases not shown here. Supports providing a
 list of second-level domains that should be treated as part of the top-level domain (ex: co.uk) */
 
-/**
-@typedef {Object} ParseUriObject
-@prop {string} href
-@prop {string} origin
-@prop {string} protocol
-@prop {string} authority
-@prop {string} userinfo
-@prop {string} username
-@prop {string} password
-@prop {string} host
-@prop {string} hostname
-@prop {string} subdomain
-@prop {string} domain
-@prop {string} tld
-@prop {string} port
-@prop {string} resource
-@prop {string} pathname
-@prop {string} directory
-@prop {string} filename
-@prop {string} suffix
-@prop {string} query
-@prop {string} fragment
-@prop {URLSearchParams} queryParams
-*/
+interface ParseUriObject {
+  href: string;
+  origin: string;
+  protocol: string;
+  authority: string;
+  userinfo: string;
+  username: string;
+  password: string;
+  host: string;
+  hostname: string;
+  subdomain: string;
+  domain: string;
+  tld: string;
+  port: string;
+  resource: string;
+  pathname: string;
+  directory: string;
+  filename: string;
+  suffix: string;
+  query: string;
+  fragment: string;
+  queryParams: URLSearchParams;
+}
 
 /**
 Splits any URI into its parts.
@@ -73,9 +72,17 @@ Splits any URI into its parts.
 Friendly handles human-friendly URLs like `'example.com/index.html'` as expected.
 @returns {ParseUriObject} Object with URI parts, plus `queryParams`.
 */
-function parseUri(uri, mode = "default") {
+function parseUri(
+  uri: string,
+  mode: "default" | "friendly" = "default"
+): ParseUriObject {
   uri = uri.trim();
-  const { groups } = cache.parser[mode].exec(uri);
+  const match = cache.parser[mode].exec(uri);
+  if (!match || !match.groups) {
+    throw "Failed to properly parse uri";
+  }
+  const { groups } = match;
+  // @ts-ignore
   const { hasAuth, ...result } = {
     href: uri,
     ...groups,
@@ -83,11 +90,14 @@ function parseUri(uri, mode = "default") {
     // they don't apply. `hasAuth` indicates participation in the match, but it could be empty
     ...(groups.protocol && groups.hasAuth == null ? blankUrnProps : null),
   };
+  const parsedUri: ParseUriObject = result as ParseUriObject;
   // Replace `undefined` for non-participating capturing groups
-  Object.keys(result).forEach((key) => (result[key] ??= ""));
-  return Object.assign(result, {
-    ...cache.tlds?.exec(result.hostname)?.groups,
-    queryParams: new URLSearchParams(`?${result.query}`),
+  (
+    Object.keys(parsedUri) as Array<keyof Omit<ParseUriObject, "queryParams">>
+  ).forEach((key) => (parsedUri[key] ??= ""));
+  return Object.assign(parsedUri, {
+    ...cache.tlds?.exec(parsedUri.hostname)?.groups,
+    queryParams: new URLSearchParams(`?${parsedUri.query}`),
   });
 }
 
@@ -97,7 +107,7 @@ const blankUrnProps = {
   suffix: "",
 };
 
-function getParser(mode) {
+function getParser(mode: "default" | "friendly") {
   // Forward and backslashes have lost all meaning for web protocols (http, https, ws, wss, ftp)
   // and protocol-relative URLs. Also handle multiple colons in protocol delimiter for security
   const authorityDelimiter = String.raw`(?:(?:(?<=^(?:https?|wss?|ftp):):*|^:+)[\\/]*|^[\\/]{2,}|//)`;
@@ -112,7 +122,13 @@ function getParser(mode) {
   );
 }
 
-const cache = {
+const cache: {
+  parser: {
+    default: RegExp;
+    friendly: RegExp;
+  };
+  tlds?: RegExp;
+} = {
   parser: {
     default: getParser("default"),
     friendly: getParser("friendly"),
@@ -128,7 +144,7 @@ const cache = {
     uk: 'co gov me net org sch',
   });
   */
-function setTlds(obj) {
+function setTlds(obj: Record<string, string>) {
   const entries = Object.entries(obj);
   let parser;
   if (entries.length) {

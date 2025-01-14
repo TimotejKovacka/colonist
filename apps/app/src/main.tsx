@@ -16,6 +16,7 @@ import { WebSocketProvider } from "./contexts/ws-context.tsx";
 import App from "./App.tsx";
 import { GameFacade } from "./lib/game-facade.ts";
 import { IoProvider } from "./lib/websocket/io.provider.tsx";
+import { TestApp } from "./TestApp.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,17 +60,18 @@ export const router = createBrowserRouter([
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ToastProvider>
-          {/* <WebSocketProvider url=""> */}
-          <IoProvider>
-            <RouterProvider router={router} />
-          </IoProvider>
-          {/* </WebSocketProvider> */}
-        </ToastProvider>
-        <Toaster />
-        <ReactQueryDevtools />
-      </AuthProvider>
+      {/* <AuthProvider> */}
+      <ToastProvider>
+        {/* <WebSocketProvider url=""> */}
+        <IoProvider logger={appLogger}>
+          <TestApp />
+          {/* <RouterProvider router={router} /> */}
+        </IoProvider>
+        {/* </WebSocketProvider> */}
+      </ToastProvider>
+      <Toaster />
+      <ReactQueryDevtools />
+      {/* </AuthProvider> */}
     </QueryClientProvider>
   </StrictMode>
 );

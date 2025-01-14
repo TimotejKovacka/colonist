@@ -10,6 +10,9 @@ export class SessionService extends ServiceContainer {
   handler(): ResourceNamespaceHandler<SessionResource> {
     return {
       resource: sessionResource,
+      onPatch: (ref, patch) => {
+        this.logger.info("got a new patch", { ref, patch });
+      },
     };
   }
 }

@@ -1,0 +1,50 @@
+http:
+  routers:
+    app:
+      rule: "Host(`localhost`)"
+      service: app
+      # priority: 1
+
+    api:
+      rule: "Host(`localhost`) && PathPrefix(`/api`)"
+      service: api
+      middlewares:
+        - "api-strip-prefix"
+
+    stream:
+      rule: "Host(`localhost`) && PathPrefix(`/stream`)"
+      service: stream
+      middlewares:
+        - "stream-strip-prefix"
+        # - "ws-headers"
+
+  middlewares:
+    api-strip-prefix:
+      stripPrefixRegex:
+        regex:
+          - /api
+    stream-strip-prefix:
+      stripRegexPrefix:
+        regex:
+          - /stream
+    ws-headers:
+      headers:
+        customRequestHeaders:
+          Connection: "Upgrade"
+          Upgrade: "websocket"
+
+  services:
+    app:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:3000"
+
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:3001"
+
+    stream:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:3002"
